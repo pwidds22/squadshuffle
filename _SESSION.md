@@ -1,10 +1,10 @@
 # Current Session State
 
 **Updated:** 2026-01-22
-**Branch:** main
+**Branch:** master
 
 ## Project Status
-Initial project setup complete. App has working tab navigation with 5 screens.
+Initial project setup COMPLETE. App runs in Expo Go with 5-tab navigation.
 
 ## Completed This Session
 - [x] Created workflow directory structure (.claude/)
@@ -14,74 +14,43 @@ Initial project setup complete. App has working tab navigation with 5 screens.
 - [x] Created .claude/commands/ (start-session.md, end-session.md)
 - [x] Created .claude/skills/squadshuffle-architecture.md
 - [x] Initialized Expo project with TypeScript template
-- [x] Installed dependencies:
-  - @react-navigation/native, @react-navigation/bottom-tabs, @react-navigation/native-stack
-  - react-native-screens, react-native-safe-area-context
-  - expo-sqlite, expo-haptics, react-native-reanimated
+- [x] Installed dependencies (react-navigation, expo-sqlite, reanimated, haptics)
 - [x] Created src/ folder structure
 - [x] Created TypeScript types (src/types/index.ts)
 - [x] Created theme constants (src/constants/theme.ts)
 - [x] Created database layer (src/database/db.ts, queries.ts)
 - [x] Created all 5 screens (Play, History, Stats, Players, Settings)
-- [x] Created MainTabNavigator
+- [x] Created MainTabNavigator with themed dark UI
 - [x] Updated App.tsx with navigation and database init
-- [x] Updated app.json with correct bundle ID and dark mode
+- [x] Updated app.json with bundle ID and dark mode
+- [x] Tested app in Expo Go - WORKS!
+- [x] Committed initial setup
 
-## In Progress
-- None
+## Next Session: Build Team Randomizer
+Priority order:
+1. **Player selection screen** - Grid with checkboxes to pick who's playing
+2. **Game type selection** - Icon grid to pick game type
+3. **Team configuration** - Choose number of teams (2-4)
+4. **Randomizer animation** - Wheel spin with react-native-reanimated
+5. **Team reveal** - Show final teams with haptic feedback
 
-## Next Steps
-1. Test the app in Expo Go to verify it runs
-2. Implement full player management flow (edit modal, better UX)
-3. Implement game type selection with icons
-4. Build the team randomizer flow:
-   - Player selection screen
-   - Team count configuration
-   - Randomization animation (wheel spin)
-   - Team reveal
-5. Build active session with score tracking
-6. Build history list with session details
-7. Build stats/leaderboard
+### Key files to create:
+- `src/screens/PlayerSelectionScreen.tsx`
+- `src/screens/GameSelectionScreen.tsx`
+- `src/screens/TeamConfigScreen.tsx`
+- `src/screens/RandomizerScreen.tsx`
+- `src/components/AnimatedWheel.tsx`
+- `src/utils/randomizer.ts`
 
-## Files Created
-```
-SquadShuffle/
-├── App.tsx (updated)
-├── app.json (updated)
-├── CLAUDE.md
-├── _HANDOFF.md
-├── _SESSION.md
-├── .claude/
-│   ├── settings.json
-│   ├── commands/
-│   │   ├── start-session.md
-│   │   └── end-session.md
-│   └── skills/
-│       └── squadshuffle-architecture.md
-└── src/
-    ├── constants/
-    │   └── theme.ts
-    ├── database/
-    │   ├── db.ts
-    │   └── queries.ts
-    ├── navigation/
-    │   └── MainTabNavigator.tsx
-    ├── screens/
-    │   ├── PlayScreen.tsx
-    │   ├── HistoryScreen.tsx
-    │   ├── StatsScreen.tsx
-    │   ├── PlayersScreen.tsx
-    │   └── SettingsScreen.tsx
-    └── types/
-        └── index.ts
-```
+### Key files to modify:
+- `src/navigation/MainTabNavigator.tsx` - Add stack navigation for Play flow
+- `src/screens/PlayScreen.tsx` - Wire up "New Game" button
 
-## How to Test
+## How to Resume
 ```bash
-cd SquadShuffle
+cd "c:\Users\pwidd\CascadeProjects\team-wheel-app\SquadShuffle"
 npx expo start
 ```
-Then scan QR code with Expo Go app on your phone.
 
 ## Blockers/Questions
-- None currently
+- None
