@@ -4,17 +4,15 @@ import {
   Text,
   StyleSheet,
   Dimensions,
-  Animated,
-  Easing,
   TouchableOpacity,
 } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import type { NativeStackScreenProps, NativeStackNavigationProp } from '@react-navigation/native-stack';
-import * as Haptics from 'expo-haptics';
 import { Colors, Spacing, FontSizes, BorderRadius } from '../../constants/theme';
-import type { PlayStackParamList, Player, TeamAssignment, AssignmentMode } from '../../types';
+import type { PlayStackParamList, Player, TeamAssignment } from '../../types';
 import { getPlayers } from '../../database/queries';
 import { getTeamColor } from '../../utils/randomizer';
+import { SpinWheel, SpinWheelRef } from '../../components/SpinWheel';
 
 type NavigationProp = NativeStackNavigationProp<PlayStackParamList, 'Randomizer'>;
 type RouteProp = NativeStackScreenProps<PlayStackParamList, 'Randomizer'>['route'];
@@ -34,9 +32,9 @@ export default function RandomizerScreen() {
   const [isSpinning, setIsSpinning] = useState(false);
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
   const [isComplete, setIsComplete] = useState(false);
+  const [pendingPick, setPendingPick] = useState<{ player: Player; index: number } | null>(null);
 
-  const rotation = useRef(new Animated.Value(0)).current;
-  const currentRotation = useRef(0);
+  const wheelRef = useRef<SpinWheelRef>(null);
 
   useEffect(() => {
     initializeGame();
@@ -82,81 +80,53 @@ export default function RandomizerScreen() {
   const spinWheel = () => {
     if (isSpinning || remainingPlayers.length === 0) return;
 
-    setIsSpinning(true);
-    setSelectedPlayer(null);
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-
     // Pick a random player
     const randomIndex = Math.floor(Math.random() * remainingPlayers.length);
     const pickedPlayer = remainingPlayers[randomIndex];
 
-    // Calculate rotation to land on this player
-    const segmentAngle = 360 / remainingPlayers.length;
+    // Store the pending pick so we can process it when spin ends
+    setPendingPick({ player: pickedPlayer, index: randomIndex });
 
-    // Player's position in wheel coordinates (with centering offset)
-    const playerWheelAngle = randomIndex * segmentAngle + segmentAngle / 2;
-
-    // To land on this player, final rotation mod 360 must equal (360 - playerWheelAngle)
-    // This puts the player at the top (0 degrees) where the pointer is
-    const desiredFinalMod = (360 - playerWheelAngle + 360) % 360;
-
-    // Calculate additional rotation needed from current position
-    const currentMod = currentRotation.current % 360;
-    let additionalRotation = desiredFinalMod - currentMod;
-    if (additionalRotation < 0) additionalRotation += 360;
-
-    // Add 5-8 full spins for dramatic effect
-    const fullSpins = 5 + Math.random() * 3;
-    const newRotation = currentRotation.current + (fullSpins * 360) + additionalRotation;
-
-    Animated.timing(rotation, {
-      toValue: newRotation,
-      duration: 4000,
-      easing: Easing.bezier(0.2, 0.8, 0.2, 1),
-      useNativeDriver: true,
-    }).start(() => {
-      currentRotation.current = newRotation;
-      onSpinComplete(pickedPlayer);
-    });
+    // Spin the wheel to land on this player
+    wheelRef.current?.spinToIndex(randomIndex);
   };
 
-  const onSpinComplete = (pickedPlayer: Player) => {
+  const handleSpinStart = () => {
+    setIsSpinning(true);
+    setSelectedPlayer(null);
+  };
+
+  const handleSpinEnd = (winner: string, index: number) => {
     setIsSpinning(false);
-    setSelectedPlayer(pickedPlayer);
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
-    // Add player to current team
-    setTeams((prevTeams) => {
-      const newTeams = [...prevTeams];
-      newTeams[currentTeamIndex] = {
-        ...newTeams[currentTeamIndex],
-        playerIds: [...newTeams[currentTeamIndex].playerIds, pickedPlayer.id],
-        playerNames: [...newTeams[currentTeamIndex].playerNames, pickedPlayer.name],
-      };
+    if (pendingPick) {
+      const pickedPlayer = pendingPick.player;
+      setSelectedPlayer(pickedPlayer);
 
-      // Calculate next team index
-      const nextIdx = getNextTeamIndex(currentTeamIndex, newTeams);
-      setCurrentTeamIndex(nextIdx);
+      // Add player to current team
+      setTeams((prevTeams) => {
+        const newTeams = [...prevTeams];
+        newTeams[currentTeamIndex] = {
+          ...newTeams[currentTeamIndex],
+          playerIds: [...newTeams[currentTeamIndex].playerIds, pickedPlayer.id],
+          playerNames: [...newTeams[currentTeamIndex].playerNames, pickedPlayer.name],
+        };
 
-      return newTeams;
-    });
+        // Calculate next team index
+        const nextIdx = getNextTeamIndex(currentTeamIndex, newTeams);
+        setCurrentTeamIndex(nextIdx);
 
-    // Remove player from wheel if setting is enabled
-    if (removeAfterPick) {
-      setRemainingPlayers((prev) => prev.filter((p) => p.id !== pickedPlayer.id));
-    }
-  };
+        return newTeams;
+      });
 
-  const handleContinue = () => {
-    if (remainingPlayers.length === 0 || (!removeAfterPick && teams.every(t => t.playerIds.length > 0))) {
-      // Check if all players are assigned
-      const totalAssigned = teams.reduce((sum, t) => sum + t.playerIds.length, 0);
-      if (totalAssigned >= allPlayers.length) {
-        setIsComplete(true);
-        setTimeout(() => {
-          navigation.replace('TeamReveal', { teams, gameId });
-        }, 500);
+      // Remove player from wheel if setting is enabled
+      if (removeAfterPick) {
+        setRemainingPlayers((prev) => prev.filter((p) => p.id !== pickedPlayer.id));
+        // Reset wheel rotation for next spin with new segments
+        wheelRef.current?.reset();
       }
+
+      setPendingPick(null);
     }
   };
 
@@ -168,12 +138,13 @@ export default function RandomizerScreen() {
     }
   }, [teams, allPlayers.length, isSpinning]);
 
-  const segmentAngle = remainingPlayers.length > 0 ? 360 / remainingPlayers.length : 360;
-
-  const spin = rotation.interpolate({
-    inputRange: [0, 360],
-    outputRange: ['0deg', '360deg'],
-  });
+  // Get the team the last player joined (for announcement)
+  const getLastTeamName = () => {
+    if (currentTeamIndex === 0) {
+      return teamNames[teamCount - 1];
+    }
+    return teamNames[currentTeamIndex - 1];
+  };
 
   return (
     <View style={styles.container}>
@@ -190,86 +161,31 @@ export default function RandomizerScreen() {
       {selectedPlayer && !isSpinning && (
         <View style={styles.selectedAnnouncement}>
           <Text style={styles.selectedName}>{selectedPlayer.name}</Text>
-          <Text style={styles.selectedTeam}>
-            joins {teamNames[currentTeamIndex === 0 ? teamCount - 1 : currentTeamIndex - 1] || teamNames[currentTeamIndex]}!
-          </Text>
+          <Text style={styles.selectedTeam}>joins {getLastTeamName()}!</Text>
         </View>
       )}
 
       {/* Wheel */}
       <View style={styles.wheelContainer}>
-        {/* Pointer at top */}
-        <View style={styles.pointer}>
-          <View style={styles.pointerArrow} />
-        </View>
-
-        <Animated.View
-          style={[
-            styles.wheel,
-            { transform: [{ rotate: spin }] },
-          ]}
-        >
-          {remainingPlayers.map((player, index) => {
-            const angle = index * segmentAngle + segmentAngle / 2;
-            const isSelected = selectedPlayer?.id === player.id;
-
-            return (
-              <View
-                key={player.id}
-                style={[
-                  styles.segment,
-                  {
-                    transform: [
-                      { rotate: `${angle}deg` },
-                      { translateY: -WHEEL_SIZE / 2 + 60 },
-                    ],
-                  },
-                ]}
-              >
-                <View
-                  style={[
-                    styles.segmentContent,
-                    isSelected && styles.segmentContentSelected,
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.segmentText,
-                      isSelected && styles.segmentTextSelected,
-                    ]}
-                    numberOfLines={1}
-                  >
-                    {player.name}
-                  </Text>
-                </View>
-              </View>
-            );
-          })}
-
-          {/* Segment divider lines */}
-          {remainingPlayers.map((_, index) => (
-            <View
-              key={`line-${index}`}
-              style={[
-                styles.segmentLine,
-                {
-                  transform: [
-                    { rotate: `${index * segmentAngle}deg` },
-                  ],
-                },
-              ]}
-            />
-          ))}
-        </Animated.View>
-
-        {/* Center */}
-        <View style={styles.centerCircle}>
-          <Text style={styles.centerText}>
-            {remainingPlayers.length}
-          </Text>
-          <Text style={styles.centerLabel}>left</Text>
-        </View>
+        {remainingPlayers.length > 0 ? (
+          <SpinWheel
+            ref={wheelRef}
+            segments={remainingPlayers.map((p) => p.name)}
+            size={WHEEL_SIZE}
+            onSpinStart={handleSpinStart}
+            onSpinEnd={handleSpinEnd}
+          />
+        ) : (
+          <View style={styles.emptyWheel}>
+            <Text style={styles.emptyWheelText}>All players assigned!</Text>
+          </View>
+        )}
       </View>
+
+      {/* Remaining count */}
+      <Text style={styles.remainingText}>
+        {remainingPlayers.length} player{remainingPlayers.length !== 1 ? 's' : ''} remaining
+      </Text>
 
       {/* Team progress */}
       <View style={styles.teamsProgress}>
@@ -294,7 +210,7 @@ export default function RandomizerScreen() {
         <TouchableOpacity
           style={[styles.spinButton, isSpinning && styles.spinButtonDisabled]}
           onPress={spinWheel}
-          disabled={isSpinning}
+          disabled={isSpinning || remainingPlayers.length === 0}
         >
           <Text style={styles.spinButtonText}>
             {isSpinning ? 'Spinning...' : 'Spin!'}
@@ -360,83 +276,25 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginVertical: Spacing.md,
   },
-  pointer: {
-    position: 'absolute',
-    top: -10,
-    zIndex: 10,
-    alignItems: 'center',
-  },
-  pointerArrow: {
-    width: 0,
-    height: 0,
-    borderLeftWidth: 15,
-    borderRightWidth: 15,
-    borderTopWidth: 25,
-    borderLeftColor: 'transparent',
-    borderRightColor: 'transparent',
-    borderTopColor: Colors.accent,
-  },
-  wheel: {
+  emptyWheel: {
     width: WHEEL_SIZE,
     height: WHEEL_SIZE,
     borderRadius: WHEEL_SIZE / 2,
     backgroundColor: Colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
     borderWidth: 4,
     borderColor: Colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
-  segment: {
-    position: 'absolute',
-    alignItems: 'center',
-    width: 100,
+  emptyWheelText: {
+    fontSize: FontSizes.lg,
+    color: Colors.textSecondary,
+    fontWeight: '600',
   },
-  segmentContent: {
-    backgroundColor: Colors.surfaceLight,
-    paddingVertical: Spacing.xs,
-    paddingHorizontal: Spacing.sm,
-    borderRadius: BorderRadius.md,
-  },
-  segmentContentSelected: {
-    backgroundColor: Colors.accent,
-  },
-  segmentText: {
+  remainingText: {
     fontSize: FontSizes.sm,
-    color: Colors.text,
-    fontWeight: '500',
-    textAlign: 'center',
-  },
-  segmentTextSelected: {
-    color: Colors.background,
-    fontWeight: 'bold',
-  },
-  segmentLine: {
-    position: 'absolute',
-    width: 2,
-    height: WHEEL_SIZE / 2,
-    backgroundColor: Colors.border,
-    top: 0,
-    left: WHEEL_SIZE / 2 - 1,
-    transformOrigin: 'bottom',
-  },
-  centerCircle: {
-    position: 'absolute',
-    width: 70,
-    height: 70,
-    borderRadius: 35,
-    backgroundColor: Colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  centerText: {
-    fontSize: FontSizes.xl,
-    fontWeight: 'bold',
-    color: Colors.text,
-  },
-  centerLabel: {
-    fontSize: FontSizes.xs,
-    color: Colors.text,
-    opacity: 0.8,
+    color: Colors.textSecondary,
+    marginTop: Spacing.sm,
   },
   teamsProgress: {
     flexDirection: 'row',
