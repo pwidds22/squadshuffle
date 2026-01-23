@@ -7,37 +7,24 @@
 Team Randomizer flow implemented with live score tracking and history. Multiple UI/UX issues identified that need addressing.
 
 ## Completed This Session
-- [x] Updated ActiveGameScreen to show player names on each team (not just dots)
-- [x] Implemented HistoryScreen with full session details
-  - Shows game icon, name, date
-  - Winner banner with trophy
-  - Teams with player names and scores
-  - Pull-to-refresh support
-- [x] Added `accentLight` color to theme for winner banner
+- [x] Fixed invalid 'puzzle' icon → 'extension-puzzle' (Issue #1)
+- [x] Fixed wheel visuals - names now centered in segments between divider lines (Issue #2)
+- [x] Fixed wheel spin landing - pointer now correctly lands on the announced player
 
-## Previous Session Completed
+## Previous Sessions Completed
+- Updated ActiveGameScreen to show player names on each team
+- Implemented HistoryScreen with full session details
+- Added `accentLight` color to theme for winner banner
 - One-at-a-time wheel spinning
 - Live game score tracking (ActiveGameScreen)
 - Custom game creation (no default games)
 - Configurable settings with database persistence
 - Assignment mode options (round-robin vs fill-first)
 
-## Known Issues (User Feedback) - NEXT SESSION PRIORITIES
+## Known Issues (User Feedback) - REMAINING
 
-### 1. Invalid Icon Warning
-```
-WARN "puzzle" is not a valid icon name for family "ionicons"
-```
-- File: `src/screens/play/GameSelectionScreen.tsx` line ~44
-- The icon should be `puzzle-outline` or `extension-puzzle` not `puzzle`
-
-### 2. Wheel Visual Issues (HIGH PRIORITY)
-- File: `src/screens/play/RandomizerScreen.tsx`
-- Problems:
-  - Segment lines go through player names instead of dividing segments
-  - Names should be inside segments, not on divider lines
-  - Selection doesn't visually align with who gets picked
-  - Need proper pie-chart style wheel with names in wedges
+### ~~1. Invalid Icon Warning~~ FIXED
+### ~~2. Wheel Visual Issues~~ FIXED
 
 ### 3. Team Naming After Reveal
 - Currently can only name teams in TeamConfigScreen BEFORE randomizing
@@ -95,18 +82,14 @@ WARN "puzzle" is not a valid icon name for family "ionicons"
 
 ## Files Modified This Session
 ```
-src/
-├── constants/theme.ts           # Added accentLight color
-├── screens/
-│   ├── HistoryScreen.tsx        # Full implementation
-│   └── play/
-│       └── ActiveGameScreen.tsx # Added player names display
+src/screens/play/
+├── RandomizerScreen.tsx         # Fixed wheel segment positioning (line 204)
+└── GameSelectionScreen.tsx      # Fixed 'puzzle' → 'extension-puzzle' icon (line 43)
 ```
 
-## Files Needing Work Next Session
+## Files Needing Work Next
 ```
-src/screens/play/RandomizerScreen.tsx    # Fix wheel visuals (Issue #2)
-src/screens/play/GameSelectionScreen.tsx # Fix icon, keyboard (Issues #1, #6)
+src/screens/play/GameSelectionScreen.tsx # Keyboard avoiding (Issue #6)
 src/screens/play/TeamRevealScreen.tsx    # Add team renaming (Issue #3)
 src/screens/play/ActiveGameScreen.tsx    # Play again, auto-winner (Issues #7, #8)
 src/screens/HistoryScreen.tsx            # Edit/delete sessions (Issue #4)
@@ -119,9 +102,9 @@ cd "c:\Users\pwidd\CascadeProjects\team-wheel-app\SquadShuffle"
 npx expo start
 ```
 
-## Priority Order for Next Session
-1. **Fix wheel visuals** - Core UX broken (Issue #2)
-2. **Fix puzzle icon** - Easy quick fix (Issue #1)
+## Priority Order for Remaining Issues
+1. ~~**Fix wheel visuals** - Core UX broken (Issue #2)~~ DONE
+2. ~~**Fix puzzle icon** - Easy quick fix (Issue #1)~~ DONE
 3. **Keyboard avoiding** - Easy quick fix (Issue #6)
 4. **Auto-detect winner** - Important for UX (Issue #8)
 5. **Play again flow** - Nice to have (Issue #7)

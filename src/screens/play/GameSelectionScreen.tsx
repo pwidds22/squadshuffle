@@ -40,7 +40,7 @@ const GAME_ICONS = [
   'tv',
   'desktop',
   'phone-portrait',
-  'puzzle',
+  'extension-puzzle',
   'rocket',
   'planet',
   'trophy',

@@ -92,13 +92,22 @@ export default function RandomizerScreen() {
 
     // Calculate rotation to land on this player
     const segmentAngle = 360 / remainingPlayers.length;
-    const targetSegment = randomIndex;
 
-    // Add 5-8 full rotations plus the target angle
+    // Player's position in wheel coordinates (with centering offset)
+    const playerWheelAngle = randomIndex * segmentAngle + segmentAngle / 2;
+
+    // To land on this player, final rotation mod 360 must equal (360 - playerWheelAngle)
+    // This puts the player at the top (0 degrees) where the pointer is
+    const desiredFinalMod = (360 - playerWheelAngle + 360) % 360;
+
+    // Calculate additional rotation needed from current position
+    const currentMod = currentRotation.current % 360;
+    let additionalRotation = desiredFinalMod - currentMod;
+    if (additionalRotation < 0) additionalRotation += 360;
+
+    // Add 5-8 full spins for dramatic effect
     const fullSpins = 5 + Math.random() * 3;
-    const targetAngle = (fullSpins * 360) + (360 - (targetSegment * segmentAngle + segmentAngle / 2));
-
-    const newRotation = currentRotation.current + targetAngle;
+    const newRotation = currentRotation.current + (fullSpins * 360) + additionalRotation;
 
     Animated.timing(rotation, {
       toValue: newRotation,
@@ -201,7 +210,7 @@ export default function RandomizerScreen() {
           ]}
         >
           {remainingPlayers.map((player, index) => {
-            const angle = index * segmentAngle;
+            const angle = index * segmentAngle + segmentAngle / 2;
             const isSelected = selectedPlayer?.id === player.id;
 
             return (
