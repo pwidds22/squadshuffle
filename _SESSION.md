@@ -1,50 +1,117 @@
 # Current Session State
 
-**Updated:** 2026-01-22
+**Updated:** 2026-01-23
 **Branch:** master
 
 ## Project Status
-Initial project setup COMPLETE. App runs in Expo Go with 5-tab navigation.
+Team Randomizer flow implemented with live score tracking and history. Multiple UI/UX issues identified that need addressing.
 
 ## Completed This Session
-- [x] Created workflow directory structure (.claude/)
-- [x] Created CLAUDE.md project constitution
-- [x] Created _HANDOFF.md full app specification
-- [x] Created _SESSION.md (this file)
-- [x] Created .claude/commands/ (start-session.md, end-session.md)
-- [x] Created .claude/skills/squadshuffle-architecture.md
-- [x] Initialized Expo project with TypeScript template
-- [x] Installed dependencies (react-navigation, expo-sqlite, reanimated, haptics)
-- [x] Created src/ folder structure
-- [x] Created TypeScript types (src/types/index.ts)
-- [x] Created theme constants (src/constants/theme.ts)
-- [x] Created database layer (src/database/db.ts, queries.ts)
-- [x] Created all 5 screens (Play, History, Stats, Players, Settings)
-- [x] Created MainTabNavigator with themed dark UI
-- [x] Updated App.tsx with navigation and database init
-- [x] Updated app.json with bundle ID and dark mode
-- [x] Tested app in Expo Go - WORKS!
-- [x] Committed initial setup
+- [x] Updated ActiveGameScreen to show player names on each team (not just dots)
+- [x] Implemented HistoryScreen with full session details
+  - Shows game icon, name, date
+  - Winner banner with trophy
+  - Teams with player names and scores
+  - Pull-to-refresh support
+- [x] Added `accentLight` color to theme for winner banner
 
-## Next Session: Build Team Randomizer
-Priority order:
-1. **Player selection screen** - Grid with checkboxes to pick who's playing
-2. **Game type selection** - Icon grid to pick game type
-3. **Team configuration** - Choose number of teams (2-4)
-4. **Randomizer animation** - Wheel spin with react-native-reanimated
-5. **Team reveal** - Show final teams with haptic feedback
+## Previous Session Completed
+- One-at-a-time wheel spinning
+- Live game score tracking (ActiveGameScreen)
+- Custom game creation (no default games)
+- Configurable settings with database persistence
+- Assignment mode options (round-robin vs fill-first)
 
-### Key files to create:
-- `src/screens/PlayerSelectionScreen.tsx`
-- `src/screens/GameSelectionScreen.tsx`
-- `src/screens/TeamConfigScreen.tsx`
-- `src/screens/RandomizerScreen.tsx`
-- `src/components/AnimatedWheel.tsx`
-- `src/utils/randomizer.ts`
+## Known Issues (User Feedback) - NEXT SESSION PRIORITIES
 
-### Key files to modify:
-- `src/navigation/MainTabNavigator.tsx` - Add stack navigation for Play flow
-- `src/screens/PlayScreen.tsx` - Wire up "New Game" button
+### 1. Invalid Icon Warning
+```
+WARN "puzzle" is not a valid icon name for family "ionicons"
+```
+- File: `src/screens/play/GameSelectionScreen.tsx` line ~44
+- The icon should be `puzzle-outline` or `extension-puzzle` not `puzzle`
+
+### 2. Wheel Visual Issues (HIGH PRIORITY)
+- File: `src/screens/play/RandomizerScreen.tsx`
+- Problems:
+  - Segment lines go through player names instead of dividing segments
+  - Names should be inside segments, not on divider lines
+  - Selection doesn't visually align with who gets picked
+  - Need proper pie-chart style wheel with names in wedges
+
+### 3. Team Naming After Reveal
+- Currently can only name teams in TeamConfigScreen BEFORE randomizing
+- User wants ability to rename teams AFTER seeing the reveal
+- File: `src/screens/play/TeamRevealScreen.tsx`
+- Add editable team name inputs on the reveal screen
+
+### 4. History Edit/Delete
+- File: `src/screens/HistoryScreen.tsx`
+- Need to add:
+  - Swipe-to-delete or long-press menu for sessions
+  - Edit capability for scores/winner
+- New queries needed in `src/database/queries.ts`:
+  - `deleteSession(sessionId: string)`
+  - `updateSession(sessionId, updates)`
+
+### 5. Game Management (Delete Games)
+- File: `src/screens/play/GameSelectionScreen.tsx`
+- Users should be able to delete games they created
+- Add long-press or swipe-to-delete on game cards
+- Query exists: `deleteGame(id)` in `src/database/queries.ts:120`
+
+### 6. Keyboard Covering Input
+- File: `src/screens/play/GameSelectionScreen.tsx`
+- Modal game name input hidden behind keyboard
+- Fix: Wrap modal content in `KeyboardAvoidingView` or use `KeyboardAwareScrollView`
+
+### 7. "Play Again" Flow
+- File: `src/screens/play/ActiveGameScreen.tsx`
+- After ending game, prompt: "Play again?"
+  - Option 1: Same teams → create new session with same teams
+  - Option 2: Re-shuffle → go back to Randomizer with same players
+  - Option 3: Done → go to PlayHome
+- This saves a new session, not overwrites
+
+### 8. Auto-Detect Winner by Score
+- File: `src/screens/play/ActiveGameScreen.tsx`
+- Current: Always asks user to pick winner
+- Should: Auto-select winner based on scores
+  - If game.lowerScoreWins → lowest score wins
+  - Otherwise → highest score wins
+  - Still allow manual override
+- Need to load game data (currently `game` state is never set)
+- Also need to handle:
+  - Games where users don't track score (still pick winner manually)
+  - Pure random wheel generator (no scoring at all)
+
+### 9. Stats Screen Not Implemented
+- File: `src/screens/StatsScreen.tsx`
+- Currently shows placeholder "Coming soon"
+- Need to implement:
+  - Player win rates
+  - Game frequency
+  - Team combinations that win most
+
+## Files Modified This Session
+```
+src/
+├── constants/theme.ts           # Added accentLight color
+├── screens/
+│   ├── HistoryScreen.tsx        # Full implementation
+│   └── play/
+│       └── ActiveGameScreen.tsx # Added player names display
+```
+
+## Files Needing Work Next Session
+```
+src/screens/play/RandomizerScreen.tsx    # Fix wheel visuals (Issue #2)
+src/screens/play/GameSelectionScreen.tsx # Fix icon, keyboard (Issues #1, #6)
+src/screens/play/TeamRevealScreen.tsx    # Add team renaming (Issue #3)
+src/screens/play/ActiveGameScreen.tsx    # Play again, auto-winner (Issues #7, #8)
+src/screens/HistoryScreen.tsx            # Edit/delete sessions (Issue #4)
+src/screens/StatsScreen.tsx              # Implement stats (Issue #9)
+```
 
 ## How to Resume
 ```bash
@@ -52,5 +119,16 @@ cd "c:\Users\pwidd\CascadeProjects\team-wheel-app\SquadShuffle"
 npx expo start
 ```
 
+## Priority Order for Next Session
+1. **Fix wheel visuals** - Core UX broken (Issue #2)
+2. **Fix puzzle icon** - Easy quick fix (Issue #1)
+3. **Keyboard avoiding** - Easy quick fix (Issue #6)
+4. **Auto-detect winner** - Important for UX (Issue #8)
+5. **Play again flow** - Nice to have (Issue #7)
+6. **Team renaming** - Nice to have (Issue #3)
+7. **History edit/delete** - Nice to have (Issue #4)
+8. **Game deletion** - Nice to have (Issue #5)
+9. **Stats screen** - Lower priority (Issue #9)
+
 ## Blockers/Questions
-- None
+- None, just need to work through the issues list

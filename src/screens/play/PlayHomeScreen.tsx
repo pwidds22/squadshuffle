@@ -1,9 +1,20 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors, Spacing, FontSizes, BorderRadius } from '../constants/theme';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { Colors, Spacing, FontSizes, BorderRadius } from '../../constants/theme';
+import type { PlayStackParamList } from '../../types';
 
-export default function PlayScreen() {
+type NavigationProp = NativeStackNavigationProp<PlayStackParamList, 'PlayHome'>;
+
+export default function PlayHomeScreen() {
+  const navigation = useNavigation<NavigationProp>();
+
+  const handleNewGame = () => {
+    navigation.navigate('PlayerSelection');
+  };
+
   return (
     <View style={styles.container}>
       <View style={styles.content}>
@@ -11,7 +22,7 @@ export default function PlayScreen() {
         <Text style={styles.title}>Squad Shuffle</Text>
         <Text style={styles.subtitle}>Random teams, real results</Text>
 
-        <TouchableOpacity style={styles.button}>
+        <TouchableOpacity style={styles.button} onPress={handleNewGame}>
           <Ionicons name="add" size={24} color={Colors.text} />
           <Text style={styles.buttonText}>New Game</Text>
         </TouchableOpacity>

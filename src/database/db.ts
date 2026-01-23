@@ -24,7 +24,8 @@ export async function initDatabase(): Promise<SQLite.SQLiteDatabase> {
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
       iconName TEXT NOT NULL,
-      dateCreated INTEGER NOT NULL
+      dateCreated INTEGER NOT NULL,
+      lowerScoreWins INTEGER DEFAULT 0
     );
 
     CREATE TABLE IF NOT EXISTS sessions (
@@ -45,7 +46,19 @@ export async function initDatabase(): Promise<SQLite.SQLiteDatabase> {
       score INTEGER,
       FOREIGN KEY (sessionId) REFERENCES sessions(id)
     );
+
+    CREATE TABLE IF NOT EXISTS settings (
+      key TEXT PRIMARY KEY,
+      value TEXT NOT NULL
+    );
   `);
+
+  // Migration: Add lowerScoreWins column if it doesn't exist
+  try {
+    await db.runAsync('ALTER TABLE games ADD COLUMN lowerScoreWins INTEGER DEFAULT 0');
+  } catch {
+    // Column already exists, ignore error
+  }
 
   return db;
 }

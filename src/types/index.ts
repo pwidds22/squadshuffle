@@ -12,6 +12,7 @@ export interface Game {
   name: string;
   iconName: string; // Ionicons name
   dateCreated: number;
+  lowerScoreWins: boolean; // true for golf-style scoring
 }
 
 // Team - a group of players in a session
@@ -39,6 +40,16 @@ export type NewGame = Omit<Game, 'id' | 'dateCreated'>;
 export type NewTeam = Omit<Team, 'id'>;
 export type NewGameSession = Omit<GameSession, 'id' | 'date'>;
 
+// Assignment mode for team randomization
+export type AssignmentMode = 'round-robin' | 'fill-first';
+
+// App settings
+export interface AppSettings {
+  defaultTeamCount: number;
+  defaultAssignmentMode: AssignmentMode;
+  removePlayerAfterPick: boolean;
+}
+
 // Player stats derived from game sessions
 export interface PlayerStats {
   playerId: string;
@@ -48,3 +59,28 @@ export interface PlayerStats {
   losses: number;
   winPercentage: number;
 }
+
+// Team assignment result from randomizer
+export interface TeamAssignment {
+  name: string;
+  playerIds: string[];
+  playerNames: string[];
+}
+
+// Navigation types for Play flow
+export type PlayStackParamList = {
+  PlayHome: undefined;
+  PlayerSelection: undefined;
+  GameSelection: { selectedPlayerIds: string[] };
+  TeamConfig: { selectedPlayerIds: string[]; gameId: string };
+  Randomizer: {
+    selectedPlayerIds: string[];
+    gameId: string;
+    teamCount: number;
+    teamNames: string[];
+    assignmentMode: AssignmentMode;
+    removeAfterPick: boolean;
+  };
+  TeamReveal: { teams: TeamAssignment[]; gameId: string };
+  ActiveGame: { sessionId: string };
+};

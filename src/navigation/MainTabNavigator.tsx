@@ -3,7 +3,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../constants/theme';
 
-import PlayScreen from '../screens/PlayScreen';
+import PlayStackNavigator from './PlayStackNavigator';
 import HistoryScreen from '../screens/HistoryScreen';
 import StatsScreen from '../screens/StatsScreen';
 import PlayersScreen from '../screens/PlayersScreen';
@@ -47,8 +47,8 @@ export default function MainTabNavigator() {
     >
       <Tab.Screen
         name="Play"
-        component={PlayScreen}
-        options={{ title: 'Play' }}
+        component={PlayStackNavigator}
+        options={{ headerShown: false }}
       />
       <Tab.Screen
         name="History"

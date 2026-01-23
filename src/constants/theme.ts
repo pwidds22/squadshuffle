@@ -8,6 +8,7 @@ export const Colors = {
 
   // Accent colors
   accent: '#F59E0B', // Amber - for highlights/wins
+  accentLight: '#FEF3C7', // Light amber for backgrounds
   success: '#10B981', // Green
   error: '#EF4444', // Red
   warning: '#F59E0B', // Amber

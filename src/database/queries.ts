@@ -1,5 +1,5 @@
 import { getDatabase, generateId } from './db';
-import type { Player, Game, Team, GameSession, NewPlayer, NewGame } from '../types';
+import type { Player, Game, Team, GameSession, NewPlayer, NewGame, AppSettings, AssignmentMode } from '../types';
 
 // ============ PLAYERS ============
 
@@ -70,17 +70,51 @@ export async function addGame(game: NewGame): Promise<Game> {
   const dateCreated = Date.now();
 
   await db.runAsync(
-    'INSERT INTO games (id, name, iconName, dateCreated) VALUES (?, ?, ?, ?)',
-    [id, game.name, game.iconName, dateCreated]
+    'INSERT INTO games (id, name, iconName, dateCreated, lowerScoreWins) VALUES (?, ?, ?, ?, ?)',
+    [id, game.name, game.iconName, dateCreated, game.lowerScoreWins ? 1 : 0]
   );
 
-  return { id, name: game.name, iconName: game.iconName, dateCreated };
+  return { id, name: game.name, iconName: game.iconName, dateCreated, lowerScoreWins: game.lowerScoreWins };
 }
 
 export async function getGames(): Promise<Game[]> {
   const db = getDatabase();
-  const rows = await db.getAllAsync<Game>('SELECT * FROM games ORDER BY name');
-  return rows;
+  const rows = await db.getAllAsync<{
+    id: string;
+    name: string;
+    iconName: string;
+    dateCreated: number;
+    lowerScoreWins: number;
+  }>('SELECT * FROM games ORDER BY name');
+
+  return rows.map((row) => ({
+    id: row.id,
+    name: row.name,
+    iconName: row.iconName,
+    dateCreated: row.dateCreated,
+    lowerScoreWins: row.lowerScoreWins === 1,
+  }));
+}
+
+export async function getGameById(id: string): Promise<Game | null> {
+  const db = getDatabase();
+  const row = await db.getFirstAsync<{
+    id: string;
+    name: string;
+    iconName: string;
+    dateCreated: number;
+    lowerScoreWins: number;
+  }>('SELECT * FROM games WHERE id = ?', [id]);
+
+  if (!row) return null;
+
+  return {
+    id: row.id,
+    name: row.name,
+    iconName: row.iconName,
+    dateCreated: row.dateCreated,
+    lowerScoreWins: row.lowerScoreWins === 1,
+  };
 }
 
 export async function deleteGame(id: string): Promise<void> {
@@ -178,4 +212,59 @@ export async function endSession(
     'UPDATE sessions SET isComplete = 1, winningTeamId = ?, notes = ? WHERE id = ?',
     [winningTeamId, notes || null, sessionId]
   );
+}
+
+// ============ SETTINGS ============
+
+const DEFAULT_SETTINGS: AppSettings = {
+  defaultTeamCount: 2,
+  defaultAssignmentMode: 'round-robin',
+  removePlayerAfterPick: true,
+};
+
+export async function getSetting<K extends keyof AppSettings>(key: K): Promise<AppSettings[K]> {
+  const db = getDatabase();
+  const row = await db.getFirstAsync<{ value: string }>(
+    'SELECT value FROM settings WHERE key = ?',
+    [key]
+  );
+
+  if (!row) {
+    return DEFAULT_SETTINGS[key];
+  }
+
+  // Parse based on expected type
+  const defaultValue = DEFAULT_SETTINGS[key];
+  if (typeof defaultValue === 'boolean') {
+    return (row.value === 'true') as AppSettings[K];
+  }
+  if (typeof defaultValue === 'number') {
+    return parseInt(row.value, 10) as AppSettings[K];
+  }
+  return row.value as AppSettings[K];
+}
+
+export async function setSetting<K extends keyof AppSettings>(
+  key: K,
+  value: AppSettings[K]
+): Promise<void> {
+  const db = getDatabase();
+  await db.runAsync(
+    'INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)',
+    [key, String(value)]
+  );
+}
+
+export async function getSettings(): Promise<AppSettings> {
+  const [defaultTeamCount, defaultAssignmentMode, removePlayerAfterPick] = await Promise.all([
+    getSetting('defaultTeamCount'),
+    getSetting('defaultAssignmentMode'),
+    getSetting('removePlayerAfterPick'),
+  ]);
+
+  return {
+    defaultTeamCount,
+    defaultAssignmentMode,
+    removePlayerAfterPick,
+  };
 }
