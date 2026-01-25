@@ -10,13 +10,16 @@ import {
   TextInput,
   ScrollView,
   Switch,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp, NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Colors, Spacing, FontSizes, BorderRadius } from '../../constants/theme';
 import type { PlayStackParamList, Game } from '../../types';
-import { getGames, addGame } from '../../database/queries';
+import { getGames, addGame, deleteGame } from '../../database/queries';
 
 type NavigationProp = NativeStackNavigationProp<PlayStackParamList, 'GameSelection'>;
 type RouteProp = NativeStackScreenProps<PlayStackParamList, 'GameSelection'>['route'];
@@ -124,6 +127,32 @@ export default function GameSelectionScreen() {
     }
   };
 
+  const handleDeleteGame = (game: Game) => {
+    Alert.alert(
+      'Delete Game',
+      `Are you sure you want to delete "${game.name}"? This will also delete all game history and stats for this game type.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteGame(game.id);
+              setGames((prev) => prev.filter((g) => g.id !== game.id));
+              if (selectedGameId === game.id) {
+                setSelectedGameId(null);
+              }
+            } catch (error) {
+              console.error('Failed to delete game:', error);
+              Alert.alert('Error', 'Failed to delete game. Please try again.');
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const renderGame = ({ item }: { item: Game }) => {
     const isSelected = selectedGameId === item.id;
     return (
@@ -132,6 +161,13 @@ export default function GameSelectionScreen() {
         onPress={() => setSelectedGameId(item.id)}
         activeOpacity={0.7}
       >
+        <TouchableOpacity
+          style={styles.deleteButton}
+          onPress={() => handleDeleteGame(item)}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
+          <Ionicons name="trash-outline" size={16} color={Colors.textMuted} />
+        </TouchableOpacity>
         <View style={[styles.iconContainer, isSelected && styles.iconContainerSelected]}>
           <Ionicons
             name={item.iconName as keyof typeof Ionicons.glyphMap}
@@ -221,8 +257,12 @@ export default function GameSelectionScreen() {
         transparent={true}
         onRequestClose={() => setShowCreateModal(false)}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.keyboardAvoid}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Create Game</Text>
               <TouchableOpacity onPress={() => setShowCreateModal(false)}>
@@ -290,8 +330,9 @@ export default function GameSelectionScreen() {
                 {isCreating ? 'Creating...' : 'Create Game'}
               </Text>
             </TouchableOpacity>
+            </View>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
     </View>
   );
@@ -301,6 +342,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.background,
+  },
+  keyboardAvoid: {
+    flex: 1,
   },
   centered: {
     flex: 1,
@@ -389,6 +433,13 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: Spacing.sm,
     right: Spacing.sm,
+  },
+  deleteButton: {
+    position: 'absolute',
+    top: Spacing.sm,
+    left: Spacing.sm,
+    padding: Spacing.xs,
+    zIndex: 1,
   },
   createCard: {
     width: '47%',

@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   ScrollView,
   Animated,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -86,8 +87,15 @@ export default function TeamRevealScreen() {
         }))
       );
 
+      // Extract all player IDs from teams for play-again functionality
+      const allPlayerIds = teams.flatMap(t => t.playerIds);
+
       // Navigate to active game screen for live score tracking
-      navigation.replace('ActiveGame', { sessionId: session.id });
+      navigation.replace('ActiveGame', {
+        sessionId: session.id,
+        gameId,
+        selectedPlayerIds: allPlayerIds,
+      });
     } catch (error) {
       console.error('Failed to create session:', error);
       Alert.alert('Error', 'Failed to create game session');

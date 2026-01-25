@@ -5,7 +5,7 @@ import { Colors } from '../constants/theme';
 
 import PlayStackNavigator from './PlayStackNavigator';
 import HistoryScreen from '../screens/HistoryScreen';
-import StatsScreen from '../screens/StatsScreen';
+import StatsStackNavigator from './StatsStackNavigator';
 import PlayersScreen from '../screens/PlayersScreen';
 import SettingsScreen from '../screens/SettingsScreen';
 
@@ -57,8 +57,8 @@ export default function MainTabNavigator() {
       />
       <Tab.Screen
         name="Stats"
-        component={StatsScreen}
-        options={{ title: 'Stats' }}
+        component={StatsStackNavigator}
+        options={{ headerShown: false }}
       />
       <Tab.Screen
         name="Players"

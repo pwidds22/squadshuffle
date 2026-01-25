@@ -74,20 +74,36 @@ export const SpinWheel = forwardRef<SpinWheelRef, SpinWheelProps>(
         onSpinStart?.();
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
-        // D3 pie starts at 12 o'clock (-90°) and goes clockwise
-        // The pointer is at the top (12 o'clock position)
-        // We need to rotate so the winner segment's center is at 12 o'clock
+        // Calculate rotation to land on the winner segment
+        const segmentAngle = 360 / segments.length;
 
-        const segmentAngle = (2 * Math.PI) / segments.length;
-        // Center of the winner segment in radians (from 12 o'clock)
-        const winnerCenterAngle = winnerIndex * segmentAngle + segmentAngle / 2;
-        // Convert to degrees and adjust for rotation direction
-        const targetDegrees = (winnerCenterAngle * 180) / Math.PI;
+        // Random position within segment (20%-80% to avoid landing on edges)
+        const randomWithinSegment = (0.2 + Math.random() * 0.6) * segmentAngle;
+        const segmentStart = winnerIndex * segmentAngle;
+        const targetDegrees = segmentStart + randomWithinSegment;
+
+        // Account for the -90° rotation on the SVG G element (pointer is at top/12 o'clock)
+        const pointerOffset = 90;
+        const targetOffset = (360 - targetDegrees + pointerOffset + 360) % 360;
+
+        // Account for where the wheel currently is
+        const currentAngle = ((rotation.value % 360) + 360) % 360;
+        const adjustment = ((targetOffset - currentAngle) + 360) % 360;
 
         // Add multiple full spins (5-7) for dramatic effect
-        const fullSpins = 360 * (5 + Math.random() * 2);
-        // Rotate counter-clockwise to bring winner to top
-        const finalRotation = rotation.value + fullSpins + (360 - targetDegrees);
+        const numSpins = 5 + Math.floor(Math.random() * 3); // 5, 6, or 7
+        const fullSpins = 360 * numSpins;
+
+        const finalRotation = rotation.value + fullSpins + adjustment;
+
+        // Debug logging
+        console.log('=== SPIN DEBUG ===');
+        console.log('segments:', segments);
+        console.log('winnerIndex:', winnerIndex, '→', segments[winnerIndex]);
+        console.log('segmentStart:', segmentStart, '→ targetDegrees:', targetDegrees.toFixed(1));
+        console.log('pointerOffset:', pointerOffset, '→ targetOffset:', targetOffset.toFixed(1));
+        console.log('currentAngle:', currentAngle.toFixed(1), '→ adjustment:', adjustment.toFixed(1));
+        console.log('finalRotation:', finalRotation.toFixed(1), '→ effective:', (finalRotation % 360).toFixed(1));
 
         rotation.value = withTiming(
           finalRotation,
@@ -110,7 +126,7 @@ export const SpinWheel = forwardRef<SpinWheelRef, SpinWheelProps>(
       reset: () => {
         rotation.value = 0;
       },
-    }));
+    }), [segments, onSpinStart, onSpinEnd, rotation]);
 
     const animatedStyle = useAnimatedStyle(() => ({
       transform: [{ rotate: `${rotation.value}deg` }],
@@ -180,6 +196,8 @@ const styles = StyleSheet.create({
   pointerContainer: {
     position: 'absolute',
     top: -5,
+    left: 0,
+    right: 0,
     zIndex: 10,
     alignItems: 'center',
   },

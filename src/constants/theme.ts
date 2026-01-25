@@ -59,13 +59,3 @@ export const BorderRadius = {
   xl: 16,
   full: 9999,
 };
-
-// Default game types with icons
-export const DefaultGames = [
-  { name: 'Roblox', iconName: 'game-controller' },
-  { name: 'Golf', iconName: 'golf' },
-  { name: 'Trivia', iconName: 'help-circle' },
-  { name: 'Board Games', iconName: 'grid' },
-  { name: 'Video Games', iconName: 'game-controller' },
-  { name: 'Other', iconName: 'ellipsis-horizontal' },
-];

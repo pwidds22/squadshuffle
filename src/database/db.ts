@@ -60,6 +60,13 @@ export async function initDatabase(): Promise<SQLite.SQLiteDatabase> {
     // Column already exists, ignore error
   }
 
+  // Migration: Add placement column to teams table (1 = 1st, 2 = 2nd, etc.)
+  try {
+    await db.runAsync('ALTER TABLE teams ADD COLUMN placement INTEGER');
+  } catch {
+    // Column already exists, ignore error
+  }
+
   return db;
 }
 

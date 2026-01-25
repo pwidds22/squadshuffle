@@ -22,6 +22,7 @@ export interface Team {
   name: string;
   playerIds: string[]; // stored as JSON in SQLite
   score: number | null;
+  placement: number | null; // 1 = 1st place, 2 = 2nd, etc.
 }
 
 // GameSession - a single game session with teams
@@ -72,7 +73,11 @@ export type PlayStackParamList = {
   PlayHome: undefined;
   PlayerSelection: undefined;
   GameSelection: { selectedPlayerIds: string[] };
-  TeamConfig: { selectedPlayerIds: string[]; gameId: string };
+  TeamConfig: {
+    selectedPlayerIds: string[];
+    gameId: string;
+    reuseTeams?: { name: string; playerIds: string[] }[];
+  };
   Randomizer: {
     selectedPlayerIds: string[];
     gameId: string;
@@ -82,5 +87,9 @@ export type PlayStackParamList = {
     removeAfterPick: boolean;
   };
   TeamReveal: { teams: TeamAssignment[]; gameId: string };
-  ActiveGame: { sessionId: string };
+  ActiveGame: {
+    sessionId: string;
+    gameId?: string;
+    selectedPlayerIds?: string[];
+  };
 };

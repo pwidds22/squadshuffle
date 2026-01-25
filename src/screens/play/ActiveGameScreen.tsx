@@ -19,6 +19,7 @@ import {
   updateTeamScore,
   endSession,
   getPlayers,
+  getGameById,
 } from '../../database/queries';
 import { getTeamColor } from '../../utils/randomizer';
 
@@ -33,13 +34,14 @@ interface TeamWithNames extends Team {
 export default function ActiveGameScreen() {
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute<RouteProp>();
-  const { sessionId } = route.params;
+  const { sessionId, gameId, selectedPlayerIds } = route.params;
 
   const [teams, setTeams] = useState<TeamWithNames[]>([]);
   const [game, setGame] = useState<Game | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showEndModal, setShowEndModal] = useState(false);
   const [selectedWinner, setSelectedWinner] = useState<string | null>(null);
+  const [showPlayAgainModal, setShowPlayAgainModal] = useState(false);
 
   useEffect(() => {
     loadGameData();
@@ -47,8 +49,11 @@ export default function ActiveGameScreen() {
 
   const loadGameData = async () => {
     try {
-      const teamsData = await getTeamsForSession(sessionId);
-      const allPlayers = await getPlayers(false); // Get all players including inactive
+      const [teamsData, allPlayers, gameData] = await Promise.all([
+        getTeamsForSession(sessionId),
+        getPlayers(false), // Get all players including inactive
+        gameId ? getGameById(gameId) : null,
+      ]);
 
       // Create a map for quick lookup
       const playerMap = new Map(allPlayers.map((p) => [p.id, p.name]));
@@ -60,6 +65,7 @@ export default function ActiveGameScreen() {
       }));
 
       setTeams(teamsWithNames);
+      setGame(gameData);
     } catch (error) {
       console.error('Failed to load game data:', error);
     } finally {
@@ -89,6 +95,9 @@ export default function ActiveGameScreen() {
   };
 
   const handleEndGame = () => {
+    // Auto-select winner based on scores
+    const autoWinner = getWinnerByScore();
+    setSelectedWinner(autoWinner);
     setShowEndModal(true);
   };
 
@@ -100,27 +109,73 @@ export default function ActiveGameScreen() {
 
       setShowEndModal(false);
 
-      // Navigate back to home
-      navigation.dispatch(
-        CommonActions.reset({
-          index: 0,
-          routes: [{ name: 'PlayHome' }],
-        })
-      );
+      // Show play again options
+      setShowPlayAgainModal(true);
     } catch (error) {
       console.error('Failed to end session:', error);
       Alert.alert('Error', 'Failed to save game results');
     }
   };
 
+  const handlePlayAgainSameTeams = () => {
+    setShowPlayAgainModal(false);
+    // Navigate to team config with same setup to create new session
+    if (gameId && selectedPlayerIds) {
+      navigation.dispatch(
+        CommonActions.reset({
+          index: 0,
+          routes: [
+            { name: 'PlayHome' },
+            {
+              name: 'TeamConfig',
+              params: { selectedPlayerIds, gameId, reuseTeams: teams.map(t => ({ name: t.name, playerIds: t.playerIds })) },
+            },
+          ],
+        })
+      );
+    }
+  };
+
+  const handlePlayAgainNewTeams = () => {
+    setShowPlayAgainModal(false);
+    // Navigate to randomizer with same players
+    if (gameId && selectedPlayerIds) {
+      navigation.dispatch(
+        CommonActions.reset({
+          index: 0,
+          routes: [
+            { name: 'PlayHome' },
+            { name: 'PlayerSelection' },
+            { name: 'GameSelection', params: { selectedPlayerIds } },
+            { name: 'TeamConfig', params: { selectedPlayerIds, gameId } },
+          ],
+        })
+      );
+    }
+  };
+
+  const handleDone = () => {
+    setShowPlayAgainModal(false);
+    navigation.dispatch(
+      CommonActions.reset({
+        index: 0,
+        routes: [{ name: 'PlayHome' }],
+      })
+    );
+  };
+
   const getWinnerByScore = (): string | null => {
     if (teams.length === 0) return null;
 
-    // For now, assume higher score wins (we'll need to check game.lowerScoreWins later)
-    const sorted = [...teams].sort((a, b) => (b.score || 0) - (a.score || 0));
+    const lowerWins = game?.lowerScoreWins ?? false;
+    const sorted = [...teams].sort((a, b) => {
+      const scoreA = a.score ?? 0;
+      const scoreB = b.score ?? 0;
+      return lowerWins ? scoreA - scoreB : scoreB - scoreA;
+    });
 
     // Check for tie
-    if (sorted.length > 1 && sorted[0].score === sorted[1].score) {
+    if (sorted.length > 1 && (sorted[0].score ?? 0) === (sorted[1].score ?? 0)) {
       return null; // Tie
     }
 
@@ -269,6 +324,55 @@ export default function ActiveGameScreen() {
                 <Text style={styles.confirmButtonText}>Save & End</Text>
               </TouchableOpacity>
             </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Play Again Modal */}
+      <Modal
+        visible={showPlayAgainModal}
+        animationType="fade"
+        transparent={true}
+        onRequestClose={handleDone}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Ionicons name="trophy" size={48} color={Colors.accent} style={styles.trophyIcon} />
+            <Text style={styles.modalTitle}>Game Complete!</Text>
+            <Text style={styles.modalSubtitle}>
+              {selectedWinner
+                ? `${teams.find(t => t.id === selectedWinner)?.name} wins!`
+                : 'It\'s a tie!'}
+            </Text>
+
+            <TouchableOpacity
+              style={styles.playAgainOption}
+              onPress={handlePlayAgainSameTeams}
+            >
+              <Ionicons name="refresh" size={24} color={Colors.primary} />
+              <View style={styles.playAgainText}>
+                <Text style={styles.playAgainTitle}>Play Again - Same Teams</Text>
+                <Text style={styles.playAgainHint}>Quick rematch with current teams</Text>
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.playAgainOption}
+              onPress={handlePlayAgainNewTeams}
+            >
+              <Ionicons name="shuffle" size={24} color={Colors.primary} />
+              <View style={styles.playAgainText}>
+                <Text style={styles.playAgainTitle}>New Random Teams</Text>
+                <Text style={styles.playAgainHint}>Re-shuffle with same players</Text>
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.doneButton}
+              onPress={handleDone}
+            >
+              <Text style={styles.doneButtonText}>Done</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </Modal>
@@ -489,5 +593,45 @@ const styles = StyleSheet.create({
     fontSize: FontSizes.md,
     fontWeight: '600',
     color: Colors.text,
+  },
+  // Play Again Modal styles
+  trophyIcon: {
+    alignSelf: 'center',
+    marginBottom: Spacing.md,
+  },
+  playAgainOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.background,
+    padding: Spacing.md,
+    borderRadius: BorderRadius.lg,
+    marginBottom: Spacing.sm,
+    gap: Spacing.md,
+  },
+  playAgainText: {
+    flex: 1,
+  },
+  playAgainTitle: {
+    fontSize: FontSizes.md,
+    fontWeight: '600',
+    color: Colors.text,
+  },
+  playAgainHint: {
+    fontSize: FontSizes.sm,
+    color: Colors.textMuted,
+    marginTop: 2,
+  },
+  doneButton: {
+    marginTop: Spacing.md,
+    paddingVertical: Spacing.md,
+    borderRadius: BorderRadius.lg,
+    borderWidth: 2,
+    borderColor: Colors.border,
+    alignItems: 'center',
+  },
+  doneButtonText: {
+    fontSize: FontSizes.md,
+    color: Colors.textSecondary,
+    fontWeight: '500',
   },
 });

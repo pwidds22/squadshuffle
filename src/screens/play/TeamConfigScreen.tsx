@@ -13,7 +13,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp, NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Colors, Spacing, FontSizes, BorderRadius } from '../../constants/theme';
 import type { PlayStackParamList, AssignmentMode } from '../../types';
-import { getSettings } from '../../database/queries';
+import { getSettings, getPlayers, createSession } from '../../database/queries';
 
 type NavigationProp = NativeStackNavigationProp<PlayStackParamList, 'TeamConfig'>;
 type RouteProp = NativeStackScreenProps<PlayStackParamList, 'TeamConfig'>['route'];
@@ -23,7 +23,7 @@ const TEAM_OPTIONS = [2, 3, 4];
 export default function TeamConfigScreen() {
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute<RouteProp>();
-  const { selectedPlayerIds, gameId } = route.params;
+  const { selectedPlayerIds, gameId, reuseTeams } = route.params;
 
   const [teamCount, setTeamCount] = useState(2);
   const [teamNames, setTeamNames] = useState<string[]>(['Team 1', 'Team 2']);
@@ -75,6 +75,33 @@ export default function TeamConfigScreen() {
       assignmentMode,
       removeAfterPick,
     });
+  };
+
+  const handlePlaySameTeams = async () => {
+    if (!reuseTeams) return;
+
+    try {
+      // Get player names for the teams
+      const allPlayers = await getPlayers(false);
+      const playerMap = new Map(allPlayers.map(p => [p.id, p.name]));
+
+      // Create session and go directly to active game
+      const session = await createSession(
+        gameId,
+        reuseTeams.map(t => ({
+          name: t.name,
+          playerIds: t.playerIds,
+        }))
+      );
+
+      navigation.replace('ActiveGame', {
+        sessionId: session.id,
+        gameId,
+        selectedPlayerIds,
+      });
+    } catch (error) {
+      console.error('Failed to create session:', error);
+    }
   };
 
   const playersPerTeam = Math.floor(selectedPlayerIds.length / teamCount);
@@ -227,9 +254,16 @@ export default function TeamConfigScreen() {
         </View>
       )}
 
+      {reuseTeams && (
+        <TouchableOpacity style={styles.sameTeamsButton} onPress={handlePlaySameTeams}>
+          <Ionicons name="refresh" size={24} color={Colors.text} />
+          <Text style={styles.sameTeamsButtonText}>Play Again - Same Teams</Text>
+        </TouchableOpacity>
+      )}
+
       <TouchableOpacity style={styles.shuffleButton} onPress={handleShuffle}>
         <Ionicons name="shuffle" size={24} color={Colors.text} />
-        <Text style={styles.shuffleButtonText}>Shuffle Teams!</Text>
+        <Text style={styles.shuffleButtonText}>{reuseTeams ? 'New Random Teams' : 'Shuffle Teams!'}</Text>
       </TouchableOpacity>
     </ScrollView>
   );
@@ -403,6 +437,21 @@ const styles = StyleSheet.create({
     fontSize: FontSizes.md,
     color: Colors.text,
   },
+  sameTeamsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.success,
+    paddingVertical: Spacing.lg,
+    borderRadius: BorderRadius.lg,
+    gap: Spacing.sm,
+    marginTop: Spacing.xl,
+  },
+  sameTeamsButtonText: {
+    fontSize: FontSizes.lg,
+    fontWeight: '600',
+    color: Colors.text,
+  },
   shuffleButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -411,7 +460,7 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.lg,
     borderRadius: BorderRadius.lg,
     gap: Spacing.sm,
-    marginTop: Spacing.xl,
+    marginTop: Spacing.md,
   },
   shuffleButtonText: {
     fontSize: FontSizes.lg,

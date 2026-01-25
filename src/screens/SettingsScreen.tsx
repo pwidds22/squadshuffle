@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert, Switch, Modal } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Spacing, FontSizes, BorderRadius } from '../constants/theme';
-import { getSettings, setSetting } from '../database/queries';
+import { getSettings, setSetting, clearAllData } from '../database/queries';
 import type { AppSettings, AssignmentMode } from '../types';
 
 export default function SettingsScreen() {
@@ -48,9 +48,14 @@ export default function SettingsScreen() {
         {
           text: 'Clear Data',
           style: 'destructive',
-          onPress: () => {
-            // TODO: Implement clear data
-            Alert.alert('Coming Soon', 'This feature will be available in a future update.');
+          onPress: async () => {
+            try {
+              await clearAllData();
+              Alert.alert('Success', 'All data has been cleared.');
+            } catch (error) {
+              console.error('Failed to clear data:', error);
+              Alert.alert('Error', 'Failed to clear data. Please try again.');
+            }
           },
         },
       ]

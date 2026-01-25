@@ -32,9 +32,8 @@ export default function RandomizerScreen() {
   const [isSpinning, setIsSpinning] = useState(false);
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
   const [isComplete, setIsComplete] = useState(false);
-  const [pendingPick, setPendingPick] = useState<{ player: Player; index: number } | null>(null);
-
   const wheelRef = useRef<SpinWheelRef>(null);
+  const pendingPickRef = useRef<{ player: Player; index: number } | null>(null);
 
   useEffect(() => {
     initializeGame();
@@ -84,8 +83,8 @@ export default function RandomizerScreen() {
     const randomIndex = Math.floor(Math.random() * remainingPlayers.length);
     const pickedPlayer = remainingPlayers[randomIndex];
 
-    // Store the pending pick so we can process it when spin ends
-    setPendingPick({ player: pickedPlayer, index: randomIndex });
+    // Store the pending pick in a ref so the callback always reads current value
+    pendingPickRef.current = { player: pickedPlayer, index: randomIndex };
 
     // Spin the wheel to land on this player
     wheelRef.current?.spinToIndex(randomIndex);
@@ -99,6 +98,7 @@ export default function RandomizerScreen() {
   const handleSpinEnd = (winner: string, index: number) => {
     setIsSpinning(false);
 
+    const pendingPick = pendingPickRef.current;
     if (pendingPick) {
       const pickedPlayer = pendingPick.player;
       setSelectedPlayer(pickedPlayer);
@@ -126,9 +126,35 @@ export default function RandomizerScreen() {
         wheelRef.current?.reset();
       }
 
-      setPendingPick(null);
+      pendingPickRef.current = null;
     }
   };
+
+  // Auto-assign last player (no need to spin for just one person)
+  useEffect(() => {
+    if (remainingPlayers.length === 1 && !isSpinning && !isComplete && teams.length > 0) {
+      const timer = setTimeout(() => {
+        const lastPlayer = remainingPlayers[0];
+        setSelectedPlayer(lastPlayer);
+
+        // Add player to current team
+        setTeams((prevTeams) => {
+          const newTeams = [...prevTeams];
+          newTeams[currentTeamIndex] = {
+            ...newTeams[currentTeamIndex],
+            playerIds: [...newTeams[currentTeamIndex].playerIds, lastPlayer.id],
+            playerNames: [...newTeams[currentTeamIndex].playerNames, lastPlayer.name],
+          };
+          return newTeams;
+        });
+
+        // Remove from remaining
+        setRemainingPlayers([]);
+      }, 500); // Brief delay so user sees what's happening
+
+      return () => clearTimeout(timer);
+    }
+  }, [remainingPlayers.length, isSpinning, isComplete, teams.length, currentTeamIndex]);
 
   // Check if game is complete
   useEffect(() => {
