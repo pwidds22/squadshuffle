@@ -2,90 +2,85 @@
 
 **Updated:** 2026-01-25
 **Branch:** main
+**Commit:** 05e0313 - Add stats tab, fix wheel bugs, and implement play-again flow
 
 ## Project Status
-Core functionality complete. Wheel selection bugs fixed. Stats tab fully implemented with advanced metrics. Play-again flow implemented.
+Core app is feature-complete. Ready for testing and polish.
 
-## Completed This Session
+## Completed Features
 
-### Wheel Selection Bug Fixes
-- [x] Fixed 90° offset bug - added `pointerOffset = 90` to compensate for SVG G rotation
-- [x] Fixed two-player boundary landing - added random variance (20-80%) within segment
-- [x] Added auto-assign for last player - no longer need to spin when 1 player remains
+### Stats Tab (NEW)
+- **StatsHomeScreen** - Leaderboard with game filter, shows Win%, Avg Finish (color-coded), 1st Place count
+- **PlayerDetailScreen** - Full player stats: SOS, weighted wins, H2H records, per-game breakdown
+- **TeamRecordsScreen** - Team combination performance sorted by win percentage
 
-**Files modified:**
-- `src/components/SpinWheel.tsx` - Rotation math fix
-- `src/screens/play/RandomizerScreen.tsx` - Auto-assign last player effect
+### Wheel Selection (FIXED)
+- 90° offset bug fixed via `pointerOffset = 90` compensation
+- Random variance (20-80%) within segments prevents boundary landing
+- Last player auto-assigns after 500ms delay
 
-### Stats Tab Enhancements
-- [x] Added average finish position (avgFinish) tracking
-- [x] Key metrics shown on main leaderboard: Win%, Avg Finish, 1st Place count
-- [x] Team records now show: Record (W-L), Avg Finish, 1st Place, Games
-- [x] Color-coded avg finish (green <= 1.5, red >= 2.5)
-- [x] Team records sorted by win percentage (best first)
+### Play-Again Flow (NEW)
+- Auto-detects winner from scores (respects `lowerScoreWins`)
+- Modal offers: Same Teams, New Random Teams, Done
+- Same-teams flow bypasses randomizer
 
-**Files modified:**
-- `src/database/queries.ts` - Added avgFinish to LeaderboardEntry and TeamRecordResult
-- `src/screens/stats/StatsHomeScreen.tsx` - Updated to show key metrics
-- `src/screens/stats/TeamRecordsScreen.tsx` - Updated to show new stats
+### Data Management (NEW)
+- Delete game (with cascade delete of sessions/teams)
+- Clear all data in Settings
+- Keyboard avoiding for game creation modal
 
-### Play-Again Flow
-- [x] Auto-detect winner based on scores (respects lowerScoreWins for golf-style games)
-- [x] Play-again modal after game ends with options:
-  - Same Teams (green button)
-  - New Random Teams
-  - Done
-- [x] Same-teams flow bypasses randomizer, goes straight to ActiveGame
-- [x] Team config screen supports `reuseTeams` parameter
+## File Structure
 
-**Files modified:**
-- `src/screens/play/ActiveGameScreen.tsx` - Auto-detect winner, play-again modal
-- `src/screens/play/TeamConfigScreen.tsx` - Handle reuseTeams for replay
-- `src/screens/play/TeamRevealScreen.tsx` - Pass gameId and selectedPlayerIds
-- `src/types/index.ts` - Updated PlayStackParamList
+```
+src/
+├── navigation/
+│   └── StatsStackNavigator.tsx (NEW)
+├── screens/
+│   ├── stats/ (NEW FOLDER)
+│   │   ├── StatsHomeScreen.tsx
+│   │   ├── PlayerDetailScreen.tsx
+│   │   └── TeamRecordsScreen.tsx
+│   └── play/
+│       ├── ActiveGameScreen.tsx (play-again modal)
+│       ├── TeamConfigScreen.tsx (reuseTeams support)
+│       └── RandomizerScreen.tsx (auto-assign last player)
+├── components/
+│   └── SpinWheel.tsx (rotation math fix)
+└── database/
+    └── queries.ts (avgFinish, team records, delete game)
+```
 
-## Key Interfaces
+## Key Types
 
 ```typescript
-// LeaderboardEntry - main stats with avgFinish
+// LeaderboardEntry with avgFinish
 interface LeaderboardEntry extends PlayerStatsResult {
   strengthOfSchedule: number;
   weightedWins: number;
   avgFieldSize: number;
   placements: PlacementBreakdown;
-  avgFinish: number; // 1.0 = always 1st, 2.0 = always 2nd, etc.
+  avgFinish: number; // 1.0 = always 1st
 }
 
-// TeamRecordResult - team combo stats
-interface TeamRecordResult {
-  playerIds: string[];
-  playerNames: string[];
-  totalGames: number;
-  wins: number;
-  losses: number;
-  winPercentage: number;
-  placements: PlacementBreakdown;
-  avgFinish: number;
-}
-
-// PlayStackParamList - updated navigation
-TeamConfig: {
-  selectedPlayerIds: string[];
-  gameId: string;
-  reuseTeams?: { name: string; playerIds: string[] }[];
-};
+// Play-again support
 ActiveGame: {
   sessionId: string;
   gameId?: string;
   selectedPlayerIds?: string[];
 };
+
+TeamConfig: {
+  selectedPlayerIds: string[];
+  gameId: string;
+  reuseTeams?: { name: string; playerIds: string[] }[];
+};
 ```
 
-## Remaining Features
-1. Team naming after reveal
-2. History edit/delete
-3. Game deletion (Settings > Data Management)
-4. Keyboard avoiding for game creation modal
+## Remaining Polish Items
+1. Team naming after reveal (optional)
+2. History edit/delete (low priority)
+3. App icon and splash screen
+4. Play Store/App Store submission
 
 ## How to Resume
 ```bash
