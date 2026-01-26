@@ -1,0 +1,166 @@
+import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import Purchases, { CustomerInfo, PurchasesOffering, PurchasesPackage } from 'react-native-purchases';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native';
+
+const REVENUECAT_API_KEY_IOS = 'appl_ltvHSeDdmUqHroatKGKWeCooQkM';
+const REVENUECAT_API_KEY_ANDROID = ''; // Add Android key when needed
+const PREMIUM_ENTITLEMENT_ID = 'premium';
+const SUBSCRIPTION_CACHE_KEY = '@squadshuffle_subscription_status';
+
+interface SubscriptionContextType {
+  isPremium: boolean;
+  isLoading: boolean;
+  offerings: PurchasesOffering | null;
+  checkSubscription: () => Promise<void>;
+  purchasePackage: (pkg: PurchasesPackage) => Promise<boolean>;
+  restorePurchases: () => Promise<boolean>;
+}
+
+const SubscriptionContext = createContext<SubscriptionContextType | undefined>(undefined);
+
+interface SubscriptionProviderProps {
+  children: ReactNode;
+}
+
+export function SubscriptionProvider({ children }: SubscriptionProviderProps) {
+  const [isPremium, setIsPremium] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [offerings, setOfferings] = useState<PurchasesOffering | null>(null);
+  const [isConfigured, setIsConfigured] = useState(false);
+
+  // Initialize RevenueCat
+  useEffect(() => {
+    const init = async () => {
+      try {
+        const apiKey = Platform.OS === 'ios' ? REVENUECAT_API_KEY_IOS : REVENUECAT_API_KEY_ANDROID;
+
+        if (!apiKey) {
+          console.warn('RevenueCat API key not configured for this platform');
+          setIsLoading(false);
+          return;
+        }
+
+        await Purchases.configure({ apiKey });
+        setIsConfigured(true);
+
+        // Load cached status first for instant UI
+        const cached = await AsyncStorage.getItem(SUBSCRIPTION_CACHE_KEY);
+        if (cached) {
+          const { isPremium: cachedPremium } = JSON.parse(cached);
+          setIsPremium(cachedPremium);
+        }
+
+        // Then verify with server
+        await checkSubscriptionStatus();
+        await loadOfferings();
+      } catch (error) {
+        console.error('Error initializing RevenueCat:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    init();
+  }, []);
+
+  const checkSubscriptionStatus = useCallback(async () => {
+    if (!isConfigured && Platform.OS === 'ios') {
+      // Try to configure if not already done
+      try {
+        await Purchases.configure({ apiKey: REVENUECAT_API_KEY_IOS });
+        setIsConfigured(true);
+      } catch {
+        return;
+      }
+    }
+
+    try {
+      const customerInfo = await Purchases.getCustomerInfo();
+      const premium = customerInfo.entitlements.active[PREMIUM_ENTITLEMENT_ID] !== undefined;
+      setIsPremium(premium);
+
+      // Cache the status
+      await AsyncStorage.setItem(
+        SUBSCRIPTION_CACHE_KEY,
+        JSON.stringify({ isPremium: premium, checkedAt: Date.now() })
+      );
+    } catch (error) {
+      console.error('Error checking subscription:', error);
+    }
+  }, [isConfigured]);
+
+  const loadOfferings = async () => {
+    try {
+      const fetchedOfferings = await Purchases.getOfferings();
+      if (fetchedOfferings.current) {
+        setOfferings(fetchedOfferings.current);
+      }
+    } catch (error) {
+      console.error('Error loading offerings:', error);
+    }
+  };
+
+  const purchasePackage = async (pkg: PurchasesPackage): Promise<boolean> => {
+    try {
+      const { customerInfo } = await Purchases.purchasePackage(pkg);
+      const premium = customerInfo.entitlements.active[PREMIUM_ENTITLEMENT_ID] !== undefined;
+      setIsPremium(premium);
+
+      // Update cache
+      await AsyncStorage.setItem(
+        SUBSCRIPTION_CACHE_KEY,
+        JSON.stringify({ isPremium: premium, checkedAt: Date.now() })
+      );
+
+      return premium;
+    } catch (error: any) {
+      if (!error.userCancelled) {
+        console.error('Purchase error:', error);
+      }
+      return false;
+    }
+  };
+
+  const restorePurchases = async (): Promise<boolean> => {
+    try {
+      const customerInfo = await Purchases.restorePurchases();
+      const premium = customerInfo.entitlements.active[PREMIUM_ENTITLEMENT_ID] !== undefined;
+      setIsPremium(premium);
+
+      // Update cache
+      await AsyncStorage.setItem(
+        SUBSCRIPTION_CACHE_KEY,
+        JSON.stringify({ isPremium: premium, checkedAt: Date.now() })
+      );
+
+      return premium;
+    } catch (error) {
+      console.error('Restore error:', error);
+      return false;
+    }
+  };
+
+  return (
+    <SubscriptionContext.Provider
+      value={{
+        isPremium,
+        isLoading,
+        offerings,
+        checkSubscription: checkSubscriptionStatus,
+        purchasePackage,
+        restorePurchases,
+      }}
+    >
+      {children}
+    </SubscriptionContext.Provider>
+  );
+}
+
+export function useSubscription() {
+  const context = useContext(SubscriptionContext);
+  if (!context) {
+    throw new Error('useSubscription must be used within SubscriptionProvider');
+  }
+  return context;
+}

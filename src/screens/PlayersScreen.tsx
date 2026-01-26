@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Spacing, FontSizes, BorderRadius } from '../constants/theme';
+import BannerAd from '../components/BannerAd';
 import type { Player } from '../types';
 import { getPlayers, addPlayer, deletePlayer, updatePlayer } from '../database/queries';
 
@@ -142,6 +143,8 @@ export default function PlayersScreen() {
           showsVerticalScrollIndicator={false}
         />
       )}
+
+      <BannerAd />
     </View>
   );
 }

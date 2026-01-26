@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Colors, Spacing, FontSizes, BorderRadius } from '../../constants/theme';
+import BannerAd from '../../components/BannerAd';
 import type { PlayStackParamList } from '../../types';
 
 type NavigationProp = NativeStackNavigationProp<PlayStackParamList, 'PlayHome'>;
@@ -37,6 +38,8 @@ export default function PlayHomeScreen() {
           </Text>
         </View>
       </View>
+
+      <BannerAd />
     </View>
   );
 }

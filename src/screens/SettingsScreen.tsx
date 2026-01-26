@@ -1,11 +1,15 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert, Switch, Modal } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Alert, Switch, Modal, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Spacing, FontSizes, BorderRadius } from '../constants/theme';
 import { getSettings, setSetting, clearAllData } from '../database/queries';
+import { useSubscription } from '../contexts/SubscriptionContext';
+import PaywallModal from '../components/PaywallModal';
+import BannerAd from '../components/BannerAd';
 import type { AppSettings, AssignmentMode } from '../types';
 
 export default function SettingsScreen() {
+  const { isPremium, restorePurchases } = useSubscription();
   const [settings, setSettings] = useState<AppSettings>({
     defaultTeamCount: 2,
     defaultAssignmentMode: 'round-robin',
@@ -13,6 +17,17 @@ export default function SettingsScreen() {
   });
   const [showTeamCountModal, setShowTeamCountModal] = useState(false);
   const [showModeModal, setShowModeModal] = useState(false);
+  const [showPaywall, setShowPaywall] = useState(false);
+
+  const handleRestorePurchases = async () => {
+    const restored = await restorePurchases();
+    Alert.alert(
+      restored ? 'Success' : 'No Purchases Found',
+      restored
+        ? 'Your premium access has been restored!'
+        : 'No previous purchases were found for this account.'
+    );
+  };
 
   useEffect(() => {
     loadSettings();
@@ -68,8 +83,56 @@ export default function SettingsScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Game Defaults</Text>
+      <ScrollView style={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        {/* Subscription Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Subscription</Text>
+
+          {isPremium ? (
+            <View style={styles.settingRow}>
+              <View style={styles.settingInfo}>
+                <Ionicons name="checkmark-circle" size={22} color={Colors.success} />
+                <View style={styles.settingTextContainer}>
+                  <Text style={styles.settingLabel}>Premium Active</Text>
+                  <Text style={styles.settingHint}>
+                    Thank you for supporting Squad Shuffle!
+                  </Text>
+                </View>
+              </View>
+            </View>
+          ) : (
+            <>
+              <TouchableOpacity
+                style={[styles.settingRow, styles.upgradeRow]}
+                onPress={() => setShowPaywall(true)}
+              >
+                <View style={styles.settingInfo}>
+                  <Ionicons name="star" size={22} color={Colors.text} />
+                  <View style={styles.settingTextContainer}>
+                    <Text style={[styles.settingLabel, styles.upgradeText]}>
+                      Upgrade to Premium
+                    </Text>
+                    <Text style={styles.upgradeHint}>
+                      Unlock Stats, History & remove ads
+                    </Text>
+                  </View>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color={Colors.text} />
+              </TouchableOpacity>
+
+              <TouchableOpacity style={styles.settingRow} onPress={handleRestorePurchases}>
+                <View style={styles.settingInfo}>
+                  <Ionicons name="refresh" size={22} color={Colors.primary} />
+                  <Text style={styles.settingLabel}>Restore Purchases</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color={Colors.textMuted} />
+              </TouchableOpacity>
+            </>
+          )}
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Game Defaults</Text>
 
         <TouchableOpacity
           style={styles.settingRow}
@@ -149,6 +212,7 @@ export default function SettingsScreen() {
           </Text>
         </View>
       </View>
+      </ScrollView>
 
       {/* Team Count Modal */}
       <Modal
@@ -260,6 +324,10 @@ export default function SettingsScreen() {
           </View>
         </TouchableOpacity>
       </Modal>
+
+      <PaywallModal visible={showPaywall} onClose={() => setShowPaywall(false)} />
+
+      <BannerAd />
     </View>
   );
 }
@@ -268,6 +336,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.background,
+  },
+  scrollContent: {
+    flex: 1,
     padding: Spacing.md,
   },
   section: {
@@ -325,6 +396,19 @@ const styles = StyleSheet.create({
   },
   dangerText: {
     color: Colors.error,
+  },
+  upgradeRow: {
+    backgroundColor: Colors.primary,
+  },
+  upgradeText: {
+    color: Colors.text,
+    fontWeight: '600',
+  },
+  upgradeHint: {
+    fontSize: FontSizes.xs,
+    color: Colors.text,
+    opacity: 0.8,
+    marginTop: 2,
   },
   aboutCard: {
     backgroundColor: Colors.surface,

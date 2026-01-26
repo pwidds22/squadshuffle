@@ -5,6 +5,7 @@ import { View, Text, ActivityIndicator, StyleSheet } from 'react-native';
 import MainTabNavigator from './src/navigation/MainTabNavigator';
 import { initDatabase } from './src/database/db';
 import { Colors } from './src/constants/theme';
+import { SubscriptionProvider } from './src/contexts/SubscriptionContext';
 
 export default function App() {
   const [isReady, setIsReady] = useState(false);
@@ -44,10 +45,12 @@ export default function App() {
   }
 
   return (
-    <NavigationContainer>
-      <MainTabNavigator />
-      <StatusBar style="light" />
-    </NavigationContainer>
+    <SubscriptionProvider>
+      <NavigationContainer>
+        <MainTabNavigator />
+        <StatusBar style="light" />
+      </NavigationContainer>
+    </SubscriptionProvider>
   );
 }
 
