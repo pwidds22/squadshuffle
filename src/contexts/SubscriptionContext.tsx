@@ -8,6 +8,13 @@ const REVENUECAT_API_KEY_ANDROID = ''; // Add Android key when needed
 const PREMIUM_ENTITLEMENT_ID = 'premium';
 const SUBSCRIPTION_CACHE_KEY = '@squadshuffle_subscription_status';
 
+// ⚠️ SCREENSHOT MODE: Set to true to bypass paywall for taking App Store screenshots
+// ⚠️ IMPORTANT: Set back to false before submitting to App Store!
+const DEV_BYPASS_PAYWALL = false;
+
+// Module-level flag to prevent double initialization (survives re-renders and Strict Mode)
+let revenueCatConfigured = false;
+
 interface SubscriptionContextType {
   isPremium: boolean;
   isLoading: boolean;
@@ -24,7 +31,7 @@ interface SubscriptionProviderProps {
 }
 
 export function SubscriptionProvider({ children }: SubscriptionProviderProps) {
-  const [isPremium, setIsPremium] = useState(false);
+  const [isPremium, setIsPremium] = useState(DEV_BYPASS_PAYWALL);
   const [isLoading, setIsLoading] = useState(true);
   const [offerings, setOfferings] = useState<PurchasesOffering | null>(null);
   const [isConfigured, setIsConfigured] = useState(false);
@@ -41,14 +48,20 @@ export function SubscriptionProvider({ children }: SubscriptionProviderProps) {
           return;
         }
 
-        await Purchases.configure({ apiKey });
+        // Only configure once (module-level flag survives Strict Mode double-mount)
+        if (!revenueCatConfigured) {
+          await Purchases.configure({ apiKey });
+          revenueCatConfigured = true;
+        }
         setIsConfigured(true);
 
-        // Load cached status first for instant UI
-        const cached = await AsyncStorage.getItem(SUBSCRIPTION_CACHE_KEY);
-        if (cached) {
-          const { isPremium: cachedPremium } = JSON.parse(cached);
-          setIsPremium(cachedPremium);
+        // Load cached status first for instant UI (skip if dev bypass enabled)
+        if (!DEV_BYPASS_PAYWALL) {
+          const cached = await AsyncStorage.getItem(SUBSCRIPTION_CACHE_KEY);
+          if (cached) {
+            const { isPremium: cachedPremium } = JSON.parse(cached);
+            setIsPremium(cachedPremium);
+          }
         }
 
         // Then verify with server
@@ -65,14 +78,14 @@ export function SubscriptionProvider({ children }: SubscriptionProviderProps) {
   }, []);
 
   const checkSubscriptionStatus = useCallback(async () => {
-    if (!isConfigured && Platform.OS === 'ios') {
-      // Try to configure if not already done
-      try {
-        await Purchases.configure({ apiKey: REVENUECAT_API_KEY_IOS });
-        setIsConfigured(true);
-      } catch {
-        return;
-      }
+    // Skip if RevenueCat hasn't been configured yet
+    if (!revenueCatConfigured) {
+      return;
+    }
+
+    // Don't overwrite if dev bypass is enabled
+    if (DEV_BYPASS_PAYWALL) {
+      return;
     }
 
     try {
@@ -88,7 +101,7 @@ export function SubscriptionProvider({ children }: SubscriptionProviderProps) {
     } catch (error) {
       console.error('Error checking subscription:', error);
     }
-  }, [isConfigured]);
+  }, []);
 
   const loadOfferings = async () => {
     try {
