@@ -7,10 +7,16 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   SafeAreaView,
+  Linking,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Spacing, FontSizes, BorderRadius } from '../constants/theme';
 import { useSubscription } from '../contexts/SubscriptionContext';
+
+const LEGAL_URLS = {
+  termsOfUse: 'https://peat-bow-b31.notion.site/Terms-of-Use-Squad-Shuffle-2f6a02984392803493bedebbc769108d',
+  privacyPolicy: 'https://peat-bow-b31.notion.site/Privacy-Policy-Squad-Shuffle-2f4a029843928086b94ed06b40459eb9',
+};
 
 interface PaywallModalProps {
   visible: boolean;
@@ -162,6 +168,16 @@ export default function PaywallModal({ visible, onClose }: PaywallModalProps) {
               automatically renew unless cancelled at least 24 hours before the
               end of the current period.
             </Text>
+
+            <View style={styles.legalLinks}>
+              <TouchableOpacity onPress={() => Linking.openURL(LEGAL_URLS.termsOfUse)}>
+                <Text style={styles.legalLink}>Terms of Use</Text>
+              </TouchableOpacity>
+              <Text style={styles.legalSeparator}>|</Text>
+              <TouchableOpacity onPress={() => Linking.openURL(LEGAL_URLS.privacyPolicy)}>
+                <Text style={styles.legalLink}>Privacy Policy</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </SafeAreaView>
       </View>
@@ -307,5 +323,21 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: Spacing.md,
     lineHeight: 16,
+  },
+  legalLinks: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: Spacing.sm,
+    gap: Spacing.sm,
+  },
+  legalLink: {
+    fontSize: FontSizes.xs,
+    color: Colors.primary,
+    textDecorationLine: 'underline',
+  },
+  legalSeparator: {
+    fontSize: FontSizes.xs,
+    color: Colors.textMuted,
   },
 });

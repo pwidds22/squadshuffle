@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert, Switch, Modal, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Alert, Switch, Modal, ScrollView, Linking } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Spacing, FontSizes, BorderRadius } from '../constants/theme';
 import { getSettings, setSetting, clearAllData } from '../database/queries';
@@ -7,6 +7,11 @@ import { useSubscription } from '../contexts/SubscriptionContext';
 import PaywallModal from '../components/PaywallModal';
 import BannerAd from '../components/BannerAd';
 import type { AppSettings, AssignmentMode } from '../types';
+
+const LEGAL_URLS = {
+  termsOfUse: 'https://peat-bow-b31.notion.site/Terms-of-Use-Squad-Shuffle-2f6a02984392803493bedebbc769108d',
+  privacyPolicy: 'https://peat-bow-b31.notion.site/Privacy-Policy-Squad-Shuffle-2f4a029843928086b94ed06b40459eb9',
+};
 
 export default function SettingsScreen() {
   const { isPremium, restorePurchases } = useSubscription();
@@ -211,6 +216,28 @@ export default function SettingsScreen() {
             The team randomizer that remembers your squad and tracks who really wins.
           </Text>
         </View>
+
+        <TouchableOpacity
+          style={styles.settingRow}
+          onPress={() => Linking.openURL(LEGAL_URLS.termsOfUse)}
+        >
+          <View style={styles.settingInfo}>
+            <Ionicons name="document-text-outline" size={22} color={Colors.primary} />
+            <Text style={styles.settingLabel}>Terms of Use</Text>
+          </View>
+          <Ionicons name="open-outline" size={20} color={Colors.textMuted} />
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.settingRow}
+          onPress={() => Linking.openURL(LEGAL_URLS.privacyPolicy)}
+        >
+          <View style={styles.settingInfo}>
+            <Ionicons name="shield-checkmark-outline" size={22} color={Colors.primary} />
+            <Text style={styles.settingLabel}>Privacy Policy</Text>
+          </View>
+          <Ionicons name="open-outline" size={20} color={Colors.textMuted} />
+        </TouchableOpacity>
       </View>
       </ScrollView>
 

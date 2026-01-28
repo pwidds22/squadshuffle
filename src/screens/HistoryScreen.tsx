@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useLayoutEffect } from 'react';
 import {
   View,
   Text,
@@ -6,10 +6,13 @@ import {
   FlatList,
   ActivityIndicator,
   RefreshControl,
+  TouchableOpacity,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Colors, Spacing, FontSizes, BorderRadius } from '../constants/theme';
+import type { HistoryStackParamList } from '../navigation/HistoryStackNavigator';
 import type { GameSession, Game, Team } from '../types';
 import { getSessions, getTeamsForSession, getGames, getPlayers } from '../database/queries';
 import { getTeamColor } from '../utils/randomizer';
@@ -20,10 +23,27 @@ interface SessionWithDetails extends GameSession {
   winningTeamName: string | null;
 }
 
+type NavigationProp = NativeStackNavigationProp<HistoryStackParamList, 'HistoryHome'>;
+
 export default function HistoryScreen() {
+  const navigation = useNavigation<NavigationProp>();
   const [sessions, setSessions] = useState<SessionWithDetails[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Add "+" button to header
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      headerRight: () => (
+        <TouchableOpacity
+          onPress={() => navigation.navigate('ManualGameEntry')}
+          style={{ marginRight: Spacing.sm }}
+        >
+          <Ionicons name="add-circle" size={28} color={Colors.primary} />
+        </TouchableOpacity>
+      ),
+    });
+  }, [navigation]);
 
   useFocusEffect(
     useCallback(() => {

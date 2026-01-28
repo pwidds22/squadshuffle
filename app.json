@@ -19,8 +19,7 @@
       "infoPlist": {
         "NSCameraUsageDescription": "This app does not use the camera.",
         "NSPhotoLibraryUsageDescription": "This app does not access photos.",
-        "ITSAppUsesNonExemptEncryption": false,
-        "NSUserTrackingUsageDescription": "This allows us to show you relevant ads."
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {

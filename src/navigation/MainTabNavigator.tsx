@@ -7,7 +7,7 @@ import { useSubscription } from '../contexts/SubscriptionContext';
 import PaywallModal from '../components/PaywallModal';
 
 import PlayStackNavigator from './PlayStackNavigator';
-import HistoryScreen from '../screens/HistoryScreen';
+import HistoryStackNavigator from './HistoryStackNavigator';
 import StatsStackNavigator from './StatsStackNavigator';
 import PlayersScreen from '../screens/PlayersScreen';
 import SettingsScreen from '../screens/SettingsScreen';
@@ -72,8 +72,8 @@ export default function MainTabNavigator() {
         />
         <Tab.Screen
           name="History"
-          component={HistoryScreen}
-          options={{ title: 'History' }}
+          component={HistoryStackNavigator}
+          options={{ headerShown: false }}
           listeners={{
             tabPress: (e) => {
               if (!isPremium) {
