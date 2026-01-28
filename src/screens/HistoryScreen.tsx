@@ -37,9 +37,9 @@ export default function HistoryScreen() {
       headerRight: () => (
         <TouchableOpacity
           onPress={() => navigation.navigate('ManualGameEntry')}
-          style={{ marginRight: Spacing.sm }}
+          style={{ padding: Spacing.sm }}
         >
-          <Ionicons name="add-circle" size={28} color={Colors.primary} />
+          <Ionicons name="add" size={28} color={Colors.primary} />
         </TouchableOpacity>
       ),
     });

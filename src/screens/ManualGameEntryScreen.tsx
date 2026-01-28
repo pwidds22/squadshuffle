@@ -10,20 +10,25 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
+  Modal,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { Picker } from '@react-native-picker/picker';
 import { Colors, Spacing, FontSizes, BorderRadius } from '../constants/theme';
-import { getPlayers, getGames, createSession, updateTeamScore, endSession, getGameById } from '../database/queries';
+import { getPlayers, getGames, createSession, updateTeamScore, endSession, getGameById, addGame } from '../database/queries';
 import { getTeamColor } from '../utils/randomizer';
 import type { Player, Game } from '../types';
 import type { HistoryStackParamList } from '../navigation/HistoryStackNavigator';
 
 type NavigationProp = NativeStackNavigationProp<HistoryStackParamList, 'ManualGameEntry'>;
 
-const DEFAULT_TEAM_NAMES = ['Team 1', 'Team 2', 'Team 3', 'Team 4'];
+// Available icons for new games
+const GAME_ICONS = [
+  'game-controller', 'basketball', 'football', 'tennisball', 'golf',
+  'dice', 'puzzle', 'trophy', 'flag', 'ribbon',
+  'star', 'heart', 'diamond', 'flash', 'flame',
+];
 
 export default function ManualGameEntryScreen() {
   const navigation = useNavigation<NavigationProp>();
@@ -41,6 +46,13 @@ export default function ManualGameEntryScreen() {
   const [teamNames, setTeamNames] = useState<string[]>(['Team 1', 'Team 2']);
   const [playerAssignments, setPlayerAssignments] = useState<Record<string, number>>({}); // playerId -> teamIndex
   const [teamScores, setTeamScores] = useState<(number | null)[]>([null, null]);
+
+  // Modal states
+  const [showNewGameModal, setShowNewGameModal] = useState(false);
+  const [newGameName, setNewGameName] = useState('');
+  const [newGameIcon, setNewGameIcon] = useState('game-controller');
+  const [showTeamCountModal, setShowTeamCountModal] = useState(false);
+  const [showTeamSelectModal, setShowTeamSelectModal] = useState<string | null>(null); // playerId or null
 
   // Load initial data
   useEffect(() => {
@@ -66,13 +78,39 @@ export default function ManualGameEntryScreen() {
     }
   };
 
+  // Create new game
+  const handleCreateGame = async () => {
+    if (!newGameName.trim()) {
+      Alert.alert('Error', 'Please enter a game name');
+      return;
+    }
+    try {
+      const newGame = await addGame({
+        name: newGameName.trim(),
+        iconName: newGameIcon,
+        lowerScoreWins: false,
+      });
+      setGames((prev) => [...prev, newGame]);
+      setSelectedGameId(newGame.id);
+      setNewGameName('');
+      setNewGameIcon('game-controller');
+      setShowNewGameModal(false);
+    } catch (error) {
+      console.error('Failed to create game:', error);
+      Alert.alert('Error', 'Failed to create game');
+    }
+  };
+
+  // Get max team count based on selected players
+  const maxTeamCount = Math.max(2, selectedPlayerIds.length);
+
   // Update team count
   const handleTeamCountChange = (count: number) => {
     setTeamCount(count);
     // Extend or trim team names
     const newNames = [...teamNames];
     while (newNames.length < count) {
-      newNames.push(DEFAULT_TEAM_NAMES[newNames.length] || `Team ${newNames.length + 1}`);
+      newNames.push(`Team ${newNames.length + 1}`);
     }
     setTeamNames(newNames.slice(0, count));
     // Extend or trim scores
@@ -89,6 +127,7 @@ export default function ManualGameEntryScreen() {
       }
     });
     setPlayerAssignments(newAssignments);
+    setShowTeamCountModal(false);
   };
 
   // Toggle player selection
@@ -111,6 +150,7 @@ export default function ManualGameEntryScreen() {
       ...prev,
       [playerId]: teamIndex,
     }));
+    setShowTeamSelectModal(null);
   };
 
   // Update team name
@@ -191,7 +231,6 @@ export default function ManualGameEntryScreen() {
       }
 
       // End session (calculates winner and placements)
-      const game = await getGameById(selectedGameId!);
       await endSession(session.id, null); // null = auto-detect winner from scores
 
       Alert.alert('Success', 'Game saved successfully!', [
@@ -223,42 +262,47 @@ export default function ManualGameEntryScreen() {
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         {/* Game Selection */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Game</Text>
-          {games.length === 0 ? (
-            <Text style={styles.emptyText}>No games yet. Create one in the Play tab first.</Text>
-          ) : (
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.gamesRow}
+          <Text style={styles.sectionTitle}>Game Type</Text>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.gamesRow}
+          >
+            {/* Create New Game Card */}
+            <TouchableOpacity
+              style={styles.gameCard}
+              onPress={() => setShowNewGameModal(true)}
             >
-              {games.map((game) => (
-                <TouchableOpacity
-                  key={game.id}
+              <Ionicons name="add" size={28} color={Colors.primary} />
+              <Text style={[styles.gameCardText, { color: Colors.primary }]}>New Game</Text>
+            </TouchableOpacity>
+
+            {games.map((game) => (
+              <TouchableOpacity
+                key={game.id}
+                style={[
+                  styles.gameCard,
+                  selectedGameId === game.id && styles.gameCardSelected,
+                ]}
+                onPress={() => setSelectedGameId(game.id)}
+              >
+                <Ionicons
+                  name={game.iconName as keyof typeof Ionicons.glyphMap}
+                  size={28}
+                  color={selectedGameId === game.id ? Colors.primary : Colors.textMuted}
+                />
+                <Text
                   style={[
-                    styles.gameCard,
-                    selectedGameId === game.id && styles.gameCardSelected,
+                    styles.gameCardText,
+                    selectedGameId === game.id && styles.gameCardTextSelected,
                   ]}
-                  onPress={() => setSelectedGameId(game.id)}
+                  numberOfLines={1}
                 >
-                  <Ionicons
-                    name={game.iconName as keyof typeof Ionicons.glyphMap}
-                    size={28}
-                    color={selectedGameId === game.id ? Colors.primary : Colors.textMuted}
-                  />
-                  <Text
-                    style={[
-                      styles.gameCardText,
-                      selectedGameId === game.id && styles.gameCardTextSelected,
-                    ]}
-                    numberOfLines={1}
-                  >
-                    {game.name}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          )}
+                  {game.name}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
         </View>
 
         {/* Player Selection */}
@@ -294,32 +338,27 @@ export default function ManualGameEntryScreen() {
           )}
         </View>
 
-        {/* Team Configuration */}
+        {/* Number of Teams */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Teams</Text>
-          <View style={styles.teamCountRow}>
-            {[2, 3, 4].map((count) => (
-              <TouchableOpacity
-                key={count}
-                style={[
-                  styles.teamCountButton,
-                  teamCount === count && styles.teamCountButtonSelected,
-                ]}
-                onPress={() => handleTeamCountChange(count)}
-              >
-                <Text
-                  style={[
-                    styles.teamCountText,
-                    teamCount === count && styles.teamCountTextSelected,
-                  ]}
-                >
-                  {count}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
+          <Text style={styles.sectionTitle}>Number of Teams</Text>
+          <TouchableOpacity
+            style={styles.teamCountSelector}
+            onPress={() => setShowTeamCountModal(true)}
+          >
+            <Text style={styles.teamCountValue}>{teamCount} Teams</Text>
+            <Ionicons name="chevron-down" size={20} color={Colors.textMuted} />
+          </TouchableOpacity>
+          {selectedPlayerIds.length > 0 && selectedPlayerIds.length < teamCount && (
+            <Text style={styles.warningText}>
+              You have fewer players ({selectedPlayerIds.length}) than teams ({teamCount})
+            </Text>
+          )}
+        </View>
 
-          {/* Team Names */}
+        {/* Team Names */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Team Names</Text>
+          <Text style={styles.sectionHint}>Customize the name for each team (optional)</Text>
           <View style={styles.teamNamesContainer}>
             {teamNames.slice(0, teamCount).map((name, index) => (
               <View key={index} style={styles.teamNameRow}>
@@ -340,36 +379,38 @@ export default function ManualGameEntryScreen() {
         {selectedPlayerIds.length > 0 && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Assign Players to Teams</Text>
+            <Text style={styles.sectionHint}>Tap to select which team each player is on</Text>
             <View style={styles.assignmentList}>
               {selectedPlayerIds.map((playerId) => {
                 const player = players.find((p) => p.id === playerId);
-                const assignedTeam = playerAssignments[playerId];
+                const assignedTeamIndex = playerAssignments[playerId];
+                const assignedTeamName = assignedTeamIndex !== undefined
+                  ? teamNames[assignedTeamIndex] || `Team ${assignedTeamIndex + 1}`
+                  : null;
+                const assignedColor = assignedTeamIndex !== undefined
+                  ? getTeamColor(assignedTeamIndex)
+                  : null;
+
                 return (
-                  <View key={playerId} style={styles.assignmentRow}>
+                  <TouchableOpacity
+                    key={playerId}
+                    style={styles.assignmentRow}
+                    onPress={() => setShowTeamSelectModal(playerId)}
+                  >
                     <Text style={styles.assignmentPlayerName}>{player?.name}</Text>
-                    <View style={styles.pickerContainer}>
-                      <Picker
-                        selectedValue={assignedTeam ?? -1}
-                        onValueChange={(value) => {
-                          if (value !== -1) {
-                            assignPlayerToTeam(playerId, value as number);
-                          }
-                        }}
-                        style={styles.picker}
-                        dropdownIconColor={Colors.textMuted}
-                      >
-                        <Picker.Item label="Select team..." value={-1} color={Colors.textMuted} />
-                        {teamNames.slice(0, teamCount).map((name, index) => (
-                          <Picker.Item
-                            key={index}
-                            label={name || `Team ${index + 1}`}
-                            value={index}
-                            color={Colors.text}
-                          />
-                        ))}
-                      </Picker>
+                    <View style={styles.teamSelector}>
+                      {assignedColor && (
+                        <View style={[styles.teamColorDotSmall, { backgroundColor: assignedColor }]} />
+                      )}
+                      <Text style={[
+                        styles.teamSelectorText,
+                        !assignedTeamName && styles.teamSelectorPlaceholder
+                      ]}>
+                        {assignedTeamName || 'Select team'}
+                      </Text>
+                      <Ionicons name="chevron-down" size={16} color={Colors.textMuted} />
                     </View>
-                  </View>
+                  </TouchableOpacity>
                 );
               })}
             </View>
@@ -422,6 +463,136 @@ export default function ManualGameEntryScreen() {
 
         <View style={styles.bottomPadding} />
       </ScrollView>
+
+      {/* New Game Modal */}
+      <Modal visible={showNewGameModal} animationType="fade" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Create New Game</Text>
+
+            <Text style={styles.modalLabel}>Game Name</Text>
+            <TextInput
+              style={styles.modalInput}
+              value={newGameName}
+              onChangeText={setNewGameName}
+              placeholder="e.g., Roblox, Trivia"
+              placeholderTextColor={Colors.textMuted}
+              autoFocus
+            />
+
+            <Text style={styles.modalLabel}>Icon</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              <View style={styles.iconGrid}>
+                {GAME_ICONS.map((icon) => (
+                  <TouchableOpacity
+                    key={icon}
+                    style={[
+                      styles.iconOption,
+                      newGameIcon === icon && styles.iconOptionSelected,
+                    ]}
+                    onPress={() => setNewGameIcon(icon)}
+                  >
+                    <Ionicons
+                      name={icon as keyof typeof Ionicons.glyphMap}
+                      size={24}
+                      color={newGameIcon === icon ? Colors.primary : Colors.textMuted}
+                    />
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </ScrollView>
+
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={styles.modalButtonCancel}
+                onPress={() => setShowNewGameModal(false)}
+              >
+                <Text style={styles.modalButtonCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.modalButtonConfirm}
+                onPress={handleCreateGame}
+              >
+                <Text style={styles.modalButtonConfirmText}>Create</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Team Count Modal */}
+      <Modal visible={showTeamCountModal} animationType="fade" transparent>
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowTeamCountModal(false)}
+        >
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Number of Teams</Text>
+            <View style={styles.teamCountOptions}>
+              {Array.from({ length: Math.max(maxTeamCount - 1, 1) }, (_, i) => i + 2).map((count) => (
+                <TouchableOpacity
+                  key={count}
+                  style={[
+                    styles.teamCountOption,
+                    teamCount === count && styles.teamCountOptionSelected,
+                  ]}
+                  onPress={() => handleTeamCountChange(count)}
+                >
+                  <Text style={[
+                    styles.teamCountOptionText,
+                    teamCount === count && styles.teamCountOptionTextSelected,
+                  ]}>
+                    {count} Teams
+                  </Text>
+                  {teamCount === count && (
+                    <Ionicons name="checkmark" size={20} color={Colors.primary} />
+                  )}
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* Team Select Modal */}
+      <Modal visible={showTeamSelectModal !== null} animationType="fade" transparent>
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowTeamSelectModal(null)}
+        >
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Select Team</Text>
+            <View style={styles.teamSelectOptions}>
+              {teamNames.slice(0, teamCount).map((name, index) => {
+                const isSelected = showTeamSelectModal !== null && playerAssignments[showTeamSelectModal] === index;
+                return (
+                  <TouchableOpacity
+                    key={index}
+                    style={[
+                      styles.teamSelectOption,
+                      isSelected && styles.teamSelectOptionSelected,
+                    ]}
+                    onPress={() => showTeamSelectModal && assignPlayerToTeam(showTeamSelectModal, index)}
+                  >
+                    <View style={[styles.teamColorDot, { backgroundColor: getTeamColor(index) }]} />
+                    <Text style={[
+                      styles.teamSelectOptionText,
+                      isSelected && styles.teamSelectOptionTextSelected,
+                    ]}>
+                      {name || `Team ${index + 1}`}
+                    </Text>
+                    {isSelected && (
+                      <Ionicons name="checkmark" size={20} color={Colors.primary} />
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </KeyboardAvoidingView>
   );
 }
@@ -455,6 +626,11 @@ const styles = StyleSheet.create({
     fontSize: FontSizes.lg,
     fontWeight: '600',
     color: Colors.text,
+    marginBottom: Spacing.xs,
+  },
+  sectionHint: {
+    fontSize: FontSizes.sm,
+    color: Colors.textMuted,
     marginBottom: Spacing.sm,
   },
   sectionSubtitle: {
@@ -465,6 +641,11 @@ const styles = StyleSheet.create({
     fontSize: FontSizes.md,
     color: Colors.textMuted,
     fontStyle: 'italic',
+  },
+  warningText: {
+    fontSize: FontSizes.sm,
+    color: Colors.warning,
+    marginTop: Spacing.sm,
   },
   // Games
   gamesRow: {
@@ -519,31 +700,19 @@ const styles = StyleSheet.create({
     fontSize: FontSizes.md,
     color: Colors.text,
   },
-  // Team count
-  teamCountRow: {
-    flexDirection: 'row',
-    gap: Spacing.sm,
-    marginBottom: Spacing.md,
-  },
-  teamCountButton: {
+  // Team count selector
+  teamCountSelector: {
     backgroundColor: Colors.surface,
     borderRadius: BorderRadius.md,
-    paddingVertical: Spacing.sm,
-    paddingHorizontal: Spacing.lg,
-    borderWidth: 2,
-    borderColor: 'transparent',
+    padding: Spacing.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
-  teamCountButtonSelected: {
-    borderColor: Colors.primary,
-    backgroundColor: Colors.primaryLight,
-  },
-  teamCountText: {
-    fontSize: FontSizes.lg,
-    fontWeight: '600',
-    color: Colors.textMuted,
-  },
-  teamCountTextSelected: {
-    color: Colors.primary,
+  teamCountValue: {
+    fontSize: FontSizes.md,
+    color: Colors.text,
+    fontWeight: '500',
   },
   // Team names
   teamNamesContainer: {
@@ -558,6 +727,11 @@ const styles = StyleSheet.create({
     width: 16,
     height: 16,
     borderRadius: 8,
+  },
+  teamColorDotSmall: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
   },
   teamNameInput: {
     flex: 1,
@@ -577,24 +751,28 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     backgroundColor: Colors.surface,
     borderRadius: BorderRadius.md,
-    paddingLeft: Spacing.md,
-    paddingRight: Spacing.xs,
-    paddingVertical: Spacing.xs,
+    padding: Spacing.md,
   },
   assignmentPlayerName: {
     fontSize: FontSizes.md,
     color: Colors.text,
     flex: 1,
   },
-  pickerContainer: {
+  teamSelector: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: Colors.surfaceLight,
     borderRadius: BorderRadius.md,
-    overflow: 'hidden',
-    minWidth: 140,
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.md,
+    gap: Spacing.sm,
   },
-  picker: {
+  teamSelectorText: {
+    fontSize: FontSizes.sm,
     color: Colors.text,
-    height: 44,
+  },
+  teamSelectorPlaceholder: {
+    color: Colors.textMuted,
   },
   // Scores
   scoresContainer: {
@@ -648,5 +826,130 @@ const styles = StyleSheet.create({
   },
   bottomPadding: {
     height: Spacing.xxl,
+  },
+  // Modal styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    justifyContent: 'center',
+    padding: Spacing.lg,
+  },
+  modalContent: {
+    backgroundColor: Colors.surface,
+    borderRadius: BorderRadius.lg,
+    padding: Spacing.lg,
+  },
+  modalTitle: {
+    fontSize: FontSizes.lg,
+    fontWeight: '600',
+    color: Colors.text,
+    marginBottom: Spacing.md,
+    textAlign: 'center',
+  },
+  modalLabel: {
+    fontSize: FontSizes.sm,
+    color: Colors.textMuted,
+    marginBottom: Spacing.xs,
+    marginTop: Spacing.sm,
+  },
+  modalInput: {
+    backgroundColor: Colors.background,
+    borderRadius: BorderRadius.md,
+    padding: Spacing.md,
+    fontSize: FontSizes.md,
+    color: Colors.text,
+  },
+  iconGrid: {
+    flexDirection: 'row',
+    gap: Spacing.sm,
+    paddingVertical: Spacing.sm,
+  },
+  iconOption: {
+    width: 48,
+    height: 48,
+    borderRadius: BorderRadius.md,
+    backgroundColor: Colors.background,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  iconOptionSelected: {
+    borderColor: Colors.primary,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    gap: Spacing.sm,
+    marginTop: Spacing.lg,
+  },
+  modalButtonCancel: {
+    flex: 1,
+    padding: Spacing.md,
+    borderRadius: BorderRadius.md,
+    backgroundColor: Colors.background,
+    alignItems: 'center',
+  },
+  modalButtonCancelText: {
+    fontSize: FontSizes.md,
+    color: Colors.textMuted,
+  },
+  modalButtonConfirm: {
+    flex: 1,
+    padding: Spacing.md,
+    borderRadius: BorderRadius.md,
+    backgroundColor: Colors.primary,
+    alignItems: 'center',
+  },
+  modalButtonConfirmText: {
+    fontSize: FontSizes.md,
+    fontWeight: '600',
+    color: Colors.text,
+  },
+  // Team count options
+  teamCountOptions: {
+    gap: Spacing.xs,
+  },
+  teamCountOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: Spacing.md,
+    borderRadius: BorderRadius.md,
+    backgroundColor: Colors.background,
+  },
+  teamCountOptionSelected: {
+    backgroundColor: Colors.primaryLight,
+  },
+  teamCountOptionText: {
+    fontSize: FontSizes.md,
+    color: Colors.text,
+  },
+  teamCountOptionTextSelected: {
+    fontWeight: '600',
+    color: Colors.primary,
+  },
+  // Team select options
+  teamSelectOptions: {
+    gap: Spacing.xs,
+  },
+  teamSelectOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: Spacing.md,
+    borderRadius: BorderRadius.md,
+    backgroundColor: Colors.background,
+    gap: Spacing.sm,
+  },
+  teamSelectOptionSelected: {
+    backgroundColor: Colors.primaryLight,
+  },
+  teamSelectOptionText: {
+    fontSize: FontSizes.md,
+    color: Colors.text,
+    flex: 1,
+  },
+  teamSelectOptionTextSelected: {
+    fontWeight: '600',
+    color: Colors.primary,
   },
 });
