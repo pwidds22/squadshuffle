@@ -2,6 +2,8 @@
 
 An iOS app that randomly splits a group into fair teams.
 
+[Download on the App Store](https://apps.apple.com/us/app/squad-shuffle/id6758277622)
+
 ## What it does
 
 - Spins a wheel to assign players to teams one at a time, either alternating between teams or filling one team first.
