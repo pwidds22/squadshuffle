@@ -8,10 +8,12 @@ import {
 import { useSubscription } from '../contexts/SubscriptionContext';
 import { Colors } from '../constants/theme';
 
-// Use test ads in development, real ads in production
-const AD_UNIT_ID = __DEV__
-  ? TestIds.BANNER
-  : 'ca-app-pub-3508537774608099/4654689472';
+// Use test ads in development, or when no production ad unit is configured.
+// The production ad unit comes from EXPO_PUBLIC_ADMOB_IOS_BANNER_ID (see .env.example).
+const AD_UNIT_ID =
+  __DEV__ || !process.env.EXPO_PUBLIC_ADMOB_IOS_BANNER_ID
+    ? TestIds.BANNER
+    : process.env.EXPO_PUBLIC_ADMOB_IOS_BANNER_ID;
 
 interface BannerAdProps {
   position?: 'top' | 'bottom';

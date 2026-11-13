@@ -34,13 +34,7 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "expo-sqlite",
-      [
-        "react-native-google-mobile-ads",
-        {
-          "iosAppId": "ca-app-pub-3508537774608099~5696308409"
-        }
-      ]
+      "expo-sqlite"
     ],
     "extra": {
       "eas": {

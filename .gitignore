@@ -39,3 +39,9 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+.env
+
+# private session notes (local only)
+_HANDOFF.md
+_SESSION.md
+.claude/commands/

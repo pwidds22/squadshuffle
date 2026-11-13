@@ -3,8 +3,10 @@ import Purchases, { CustomerInfo, PurchasesOffering, PurchasesPackage } from 're
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 
-const REVENUECAT_API_KEY_IOS = 'appl_ltvHSeDdmUqHroatKGKWeCooQkM';
-const REVENUECAT_API_KEY_ANDROID = ''; // Add Android key when needed
+// Public RevenueCat SDK keys, inlined at build time from .env or EAS environment variables.
+// See .env.example.
+const REVENUECAT_API_KEY_IOS = process.env.EXPO_PUBLIC_REVENUECAT_IOS_KEY ?? '';
+const REVENUECAT_API_KEY_ANDROID = process.env.EXPO_PUBLIC_REVENUECAT_ANDROID_KEY ?? '';
 const PREMIUM_ENTITLEMENT_ID = 'premium';
 const SUBSCRIPTION_CACHE_KEY = '@squadshuffle_subscription_status';
 

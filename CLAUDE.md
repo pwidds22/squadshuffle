@@ -64,8 +64,8 @@ When context is running low or task isn't complete:
 ---
 
 ## Key Files
-- `_HANDOFF.md` - Full project context and app specification
-- `_SESSION.md` - Current progress (update every session!)
+- `_HANDOFF.md` - Full project context and app specification (local only, gitignored)
+- `_SESSION.md` - Current progress, update every session (local only, gitignored)
 - `.claude/plans/` - Detailed implementation plans for larger features
 - `.claude/skills/squadshuffle-architecture.md` - Architecture reference
 
